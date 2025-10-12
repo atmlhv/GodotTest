@@ -619,7 +619,7 @@ func rest_upgrade_equipment(member_index: int, slot: String) -> Dictionary:
     outcome["member_name"] = str(member.get("name", "???"))
     outcome["slot"] = slot
     outcome["item_id"] = equip_id
-    outcome["item_name"] = equip_data.is_empty() ? equip_id : _localize_name(equip_data)
+    outcome["item_name"] = equip_id if equip_data.is_empty() else _localize_name(equip_data)
     return outcome
 
 func finish_current_node() -> void:
@@ -1065,7 +1065,7 @@ func _get_member_upgrade_state(member: Dictionary) -> Dictionary:
         for key in raw_dict.keys():
             var slot_name: String = str(key)
             var value: int = int(raw_dict.get(key, 0))
-            normalized[slot_name] = value > 0 ? 1 : 0
+            normalized[slot_name] = 1 if value > 0 else 0
     var equipment_variant: Variant = member.get("equipment", Dictionary())
     if equipment_variant is Dictionary:
         var equipment: Dictionary = equipment_variant
