@@ -8,7 +8,10 @@
     },
     "stats": {
       "atk": 4
-    }
+    },
+    "shop_available": true,
+    "shop_base_price": 70,
+    "shop_rarity": 1.0
   },
   {
     "id": "leather_armor",
@@ -19,7 +22,10 @@
     },
     "stats": {
       "def": 3
-    }
+    },
+    "shop_available": true,
+    "shop_base_price": 60,
+    "shop_rarity": 1.0
   },
   {
     "id": "apprentice_staff",
@@ -30,7 +36,10 @@
     },
     "stats": {
       "matk": 5
-    }
+    },
+    "shop_available": true,
+    "shop_base_price": 85,
+    "shop_rarity": 1.15
   },
   {
     "id": "cloth_hat",
@@ -41,7 +50,10 @@
     },
     "stats": {
       "def": 1
-    }
+    },
+    "shop_available": true,
+    "shop_base_price": 45,
+    "shop_rarity": 0.9
   },
   {
     "id": "robe",
@@ -53,6 +65,9 @@
     "stats": {
       "def": 1,
       "matk": 2
-    }
+    },
+    "shop_available": true,
+    "shop_base_price": 75,
+    "shop_rarity": 1.05
   }
 ]

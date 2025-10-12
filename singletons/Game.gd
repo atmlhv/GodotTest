@@ -56,6 +56,7 @@ var _map_state: Dictionary = Dictionary()
 var _gold: int = 0
 var _inventory_items: Array[Dictionary] = []
 var _pending_reward: Dictionary = {}
+var _current_shop: Dictionary = {}
 
 func _ready() -> void:
     Data.data_loaded.connect(_on_data_loaded)
@@ -68,11 +69,12 @@ func new_run(seed: int, ascension_level: int) -> void:
     _ascension_level = ascension_level
     ascension_updated.emit(_ascension_level)
     RNG.initialize_seeds(seed)
-    _party_members = Data.create_default_party()
+    _party_members = _normalize_party_list(Data.create_default_party())
     party_updated.emit()
     _gold = 0
     _inventory_items = []
     _pending_reward = {}
+    _current_shop = {}
     gold_updated.emit(_gold)
     inventory_updated.emit(get_inventory())
     _current_act = 1
@@ -97,7 +99,8 @@ func update_party_member(index: int, payload: Dictionary) -> void:
     if index < 0 or index >= _party_members.size():
         push_warning("Party index out of range: %d" % index)
         return
-    _party_members[index] = _party_members[index].merged(payload)
+    var merged: Dictionary = _party_members[index].merged(payload)
+    _party_members[index] = _normalize_party_member(merged)
     party_updated.emit()
     Save.autosave_debounced()
 
@@ -132,6 +135,13 @@ func get_inventory() -> Array[Dictionary]:
     for entry in _inventory_items:
         snapshot.append(entry.duplicate(true))
     return snapshot
+
+func can_add_item_to_inventory(item_id: String) -> bool:
+    if item_id == "":
+        return true
+    if _find_inventory_index(item_id) != -1:
+        return true
+    return _inventory_items.size() < MAX_ITEM_SLOTS
 
 func add_item_to_inventory(item_id: String, quantity: int = 1) -> bool:
     if item_id == "":
@@ -222,7 +232,10 @@ func enter_map_node(node_id: String) -> void:
         _map_state["visited"] = visited
     _map_state["available"] = []
     Save.autosave_async()
-    set_state(_state_for_node_type(node.get("type", "battle")))
+    var node_type: String = str(node.get("type", "battle"))
+    if node_type == "shop":
+        ensure_shop_inventory()
+    set_state(_state_for_node_type(node_type))
 
 func open_rewards() -> void:
     ensure_reward_for_active_node()
@@ -275,11 +288,8 @@ func claim_reward_equipment(choice_index: int, member_index: int) -> bool:
     var equip_id: String = str(equipment.get("id", ""))
     if slot == "" or equip_id == "":
         return false
-    var member: Dictionary = _party_members[member_index].duplicate(true)
-    var loadout: Dictionary = member.get("equipment", {})
-    loadout[slot] = equip_id
-    member["equipment"] = loadout
-    _party_members[member_index] = member
+    if not _assign_equipment(member_index, slot, equip_id):
+        return false
     _pending_reward["claimed_equipment"] = true
     _pending_reward["selected_equipment"] = choice_index
     _pending_reward["equipment_target"] = member_index
@@ -303,12 +313,8 @@ func claim_reward_skill(choice_index: int, member_index: int) -> bool:
     var skill_id: String = str(choice_variant.get("id", ""))
     if skill_id == "":
         return false
-    var member: Dictionary = _party_members[member_index].duplicate(true)
-    var skills: Array = member.get("skills", [])
-    if not skills.has(skill_id):
-        skills.append(skill_id)
-    member["skills"] = skills
-    _party_members[member_index] = member
+    if not _learn_skill(member_index, skill_id):
+        return false
     _pending_reward["claimed_skill"] = true
     _pending_reward["selected_skill"] = choice_index
     _pending_reward["skill_target"] = member_index
@@ -361,6 +367,261 @@ func discard_reward_item() -> void:
     _pending_reward["claimed_item"] = true
     Save.autosave_debounced()
 
+func ensure_shop_inventory() -> Dictionary:
+    var active_id: String = str(_map_state.get("active", ""))
+    if active_id == "":
+        _current_shop = {}
+        return Dictionary()
+    if not _current_shop.is_empty() and _current_shop.get("node_id", "") == active_id:
+        return _current_shop
+    _current_shop = _generate_shop_inventory(active_id)
+    Save.autosave_debounced()
+    return _current_shop
+
+func get_shop_inventory() -> Dictionary:
+    if _current_shop.is_empty():
+        ensure_shop_inventory()
+    return _current_shop.duplicate(true)
+
+func purchase_shop_skill(index: int, member_index: int) -> bool:
+    var shop: Dictionary = ensure_shop_inventory()
+    var skills: Array = shop.get("skills", [])
+    if index < 0 or index >= skills.size():
+        return false
+    var entry_variant: Variant = skills[index]
+    if not (entry_variant is Dictionary):
+        return false
+    var entry: Dictionary = entry_variant
+    if entry.get("sold", false):
+        return false
+    var skill_id: String = str(entry.get("id", ""))
+    if skill_id == "":
+        return false
+    var price: int = int(entry.get("price", 0))
+    if not spend_gold(price):
+        return false
+    if not _learn_skill(member_index, skill_id):
+        add_gold(price)
+        return false
+    entry["sold"] = true
+    skills[index] = entry
+    shop["skills"] = skills
+    _current_shop = shop
+    party_updated.emit()
+    Save.autosave_debounced()
+    return true
+
+func purchase_shop_equipment(index: int, member_index: int) -> bool:
+    var shop: Dictionary = ensure_shop_inventory()
+    var equipment: Array = shop.get("equipment", [])
+    if index < 0 or index >= equipment.size():
+        return false
+    var entry_variant: Variant = equipment[index]
+    if not (entry_variant is Dictionary):
+        return false
+    var entry: Dictionary = entry_variant
+    if entry.get("sold", false):
+        return false
+    var equip_id: String = str(entry.get("id", ""))
+    var slot: String = str(entry.get("slot", ""))
+    if equip_id == "" or slot == "":
+        return false
+    var price: int = int(entry.get("price", 0))
+    if not spend_gold(price):
+        return false
+    if not _assign_equipment(member_index, slot, equip_id):
+        add_gold(price)
+        return false
+    entry["sold"] = true
+    equipment[index] = entry
+    shop["equipment"] = equipment
+    _current_shop = shop
+    party_updated.emit()
+    Save.autosave_debounced()
+    return true
+
+func purchase_shop_item(index: int) -> bool:
+    var shop: Dictionary = ensure_shop_inventory()
+    var items: Array = shop.get("items", [])
+    if index < 0 or index >= items.size():
+        return false
+    var entry_variant: Variant = items[index]
+    if not (entry_variant is Dictionary):
+        return false
+    var entry: Dictionary = entry_variant
+    if entry.get("sold", false):
+        return false
+    var item_id: String = str(entry.get("id", ""))
+    var quantity: int = int(entry.get("quantity", 1))
+    if not can_add_item_to_inventory(item_id):
+        return false
+    var price: int = int(entry.get("price", 0))
+    if not spend_gold(price):
+        return false
+    if not add_item_to_inventory(item_id, quantity):
+        add_gold(price)
+        return false
+    entry["sold"] = true
+    items[index] = entry
+    shop["items"] = items
+    _current_shop = shop
+    Save.autosave_debounced()
+    return true
+
+func purchase_shop_item_with_replacement(index: int, slot_index: int) -> bool:
+    var shop: Dictionary = ensure_shop_inventory()
+    var items: Array = shop.get("items", [])
+    if index < 0 or index >= items.size():
+        return false
+    var entry_variant: Variant = items[index]
+    if not (entry_variant is Dictionary):
+        return false
+    var entry: Dictionary = entry_variant
+    if entry.get("sold", false):
+        return false
+    var item_id: String = str(entry.get("id", ""))
+    var quantity: int = int(entry.get("quantity", 1))
+    var price: int = int(entry.get("price", 0))
+    if not spend_gold(price):
+        return false
+    if not replace_inventory_item(slot_index, item_id, quantity):
+        add_gold(price)
+        return false
+    entry["sold"] = true
+    items[index] = entry
+    shop["items"] = items
+    _current_shop = shop
+    Save.autosave_debounced()
+    return true
+
+func get_rest_heal_percentage() -> float:
+    var modifiers: Dictionary = Data.get_ascension_level(_ascension_level)
+    var scale: float = float(modifiers.get("rest_heal_scale", 1.0))
+    return 30.0 * scale
+
+func rest_heal_party_hp(percent: float) -> Dictionary:
+    var result: Dictionary = {
+        "total_healed": 0,
+    }
+    if percent <= 0.0:
+        return result
+    var changed: bool = false
+    for index in range(_party_members.size()):
+        var member: Dictionary = _party_members[index]
+        var max_hp: int = int(member.get("max_hp", member.get("hp", 0)))
+        if max_hp <= 0:
+            continue
+        var heal_amount: int = int(ceil(float(max_hp) * percent * 0.01))
+        if heal_amount <= 0:
+            heal_amount = 1
+        var current_hp: int = int(member.get("hp", max_hp))
+        var new_hp: int = clampi(current_hp + heal_amount, 0, max_hp)
+        if new_hp != current_hp:
+            member["hp"] = new_hp
+            _party_members[index] = member
+            result["total_healed"] = int(result.get("total_healed", 0)) + (new_hp - current_hp)
+            changed = true
+    if changed:
+        party_updated.emit()
+        Save.autosave_debounced()
+    return result
+
+func rest_restore_party_mp(percent: float) -> Dictionary:
+    var result: Dictionary = {
+        "total_restored": 0,
+    }
+    if percent <= 0.0:
+        return result
+    var changed: bool = false
+    for index in range(_party_members.size()):
+        var member: Dictionary = _party_members[index]
+        var max_mp: int = int(member.get("max_mp", member.get("mp", 0)))
+        if max_mp <= 0:
+            continue
+        var restore_amount: int = int(ceil(float(max_mp) * percent * 0.01))
+        if restore_amount <= 0:
+            restore_amount = 1
+        var current_mp: int = int(member.get("mp", max_mp))
+        var new_mp: int = clampi(current_mp + restore_amount, 0, max_mp)
+        if new_mp != current_mp:
+            member["mp"] = new_mp
+            _party_members[index] = member
+            result["total_restored"] = int(result.get("total_restored", 0)) + (new_mp - current_mp)
+            changed = true
+    if changed:
+        party_updated.emit()
+        Save.autosave_debounced()
+    return result
+
+func get_smith_candidates() -> Array[Dictionary]:
+    var results: Array[Dictionary] = []
+    for index in range(_party_members.size()):
+        var member: Dictionary = _party_members[index]
+        var upgrades: Dictionary = _get_member_upgrade_state(member)
+        var equipment: Dictionary = member.get("equipment", {})
+        for slot in equipment.keys():
+            var equip_variant: Variant = equipment.get(slot)
+            if equip_variant == null:
+                continue
+            var equip_id: String = str(equip_variant)
+            if equip_id == "" or equip_id.to_lower() == "null":
+                continue
+            if int(upgrades.get(slot, 0)) > 0:
+                continue
+            var equip_data: Dictionary = Data.get_equipment_by_id(equip_id)
+            var item_name: String = equip_id
+            if not equip_data.is_empty():
+                item_name = _localize_name(equip_data)
+            results.append({
+                "member_index": index,
+                "member_name": str(member.get("name", "???")),
+                "slot": str(slot),
+                "item_id": equip_id,
+                "item_name": item_name,
+            })
+    return results
+
+func rest_upgrade_equipment(member_index: int, slot: String) -> Dictionary:
+    var outcome: Dictionary = {
+        "success": false,
+    }
+    if member_index < 0 or member_index >= _party_members.size():
+        outcome["error"] = "Invalid member"
+        return outcome
+    if slot == "":
+        outcome["error"] = "Invalid slot"
+        return outcome
+    var member: Dictionary = _party_members[member_index]
+    var equipment: Dictionary = member.get("equipment", {})
+    if not equipment.has(slot):
+        outcome["error"] = "Slot empty"
+        return outcome
+    var equip_variant: Variant = equipment.get(slot)
+    if equip_variant == null:
+        outcome["error"] = "No equipment"
+        return outcome
+    var equip_id: String = str(equip_variant)
+    if equip_id == "" or equip_id.to_lower() == "null":
+        outcome["error"] = "No equipment"
+        return outcome
+    var upgrades: Dictionary = _get_member_upgrade_state(member)
+    if int(upgrades.get(slot, 0)) >= 1:
+        outcome["error"] = "Already upgraded"
+        return outcome
+    upgrades[slot] = 1
+    member["equipment_upgrades"] = upgrades
+    member = _normalize_party_member(member)
+    _party_members[member_index] = member
+    party_updated.emit()
+    Save.autosave_debounced()
+    var equip_data: Dictionary = Data.get_equipment_by_id(equip_id)
+    outcome["success"] = true
+    outcome["member_name"] = str(member.get("name", "???"))
+    outcome["slot"] = slot
+    outcome["item_id"] = equip_id
+    outcome["item_name"] = equip_data.is_empty() ? equip_id : _localize_name(equip_data)
+    return outcome
+
 func finish_current_node() -> void:
     if _map_state.is_empty():
         set_state(GameState.MAP)
@@ -381,6 +642,7 @@ func finish_current_node() -> void:
         return
     _map_state["available"] = connections.duplicate()
     _pending_reward = {}
+    _current_shop = {}
     Save.autosave_async()
     set_state(GameState.MAP)
 
@@ -396,6 +658,7 @@ func snapshot_for_save() -> Dictionary:
     snapshot["gold"] = _gold
     snapshot["inventory"] = get_inventory()
     snapshot["pending_reward"] = _pending_reward.duplicate(true)
+    snapshot["shop"] = _current_shop.duplicate(true)
     return snapshot
 
 func restore_from_save(snapshot: Dictionary) -> void:
@@ -404,7 +667,7 @@ func restore_from_save(snapshot: Dictionary) -> void:
     if saved_party is Array:
         for entry in saved_party:
             if entry is Dictionary:
-                _party_members.append((entry as Dictionary).duplicate(true))
+                _party_members.append(_normalize_party_member(entry as Dictionary))
     _ascension_level = snapshot.get("ascension_level", 0)
     var saved_rng: Variant = snapshot.get("rng", Dictionary())
     if saved_rng is Dictionary:
@@ -431,6 +694,11 @@ func restore_from_save(snapshot: Dictionary) -> void:
         _pending_reward = (saved_reward as Dictionary).duplicate(true)
     else:
         _pending_reward = {}
+    var saved_shop: Variant = snapshot.get("shop", Dictionary())
+    if saved_shop is Dictionary:
+        _current_shop = _sanitize_shop_state(saved_shop as Dictionary)
+    else:
+        _current_shop = {}
     party_updated.emit()
     ascension_updated.emit(_ascension_level)
     gold_updated.emit(_gold)
@@ -439,8 +707,10 @@ func restore_from_save(snapshot: Dictionary) -> void:
 
 func _on_data_loaded() -> void:
     if _party_members.is_empty():
-        _party_members = Data.create_default_party()
-        party_updated.emit()
+        _party_members = _normalize_party_list(Data.create_default_party())
+    else:
+        _party_members = _normalize_party_list(_party_members)
+    party_updated.emit()
 
 func _on_run_loaded(snapshot: Dictionary) -> void:
     restore_from_save(snapshot)
@@ -592,6 +862,76 @@ func _generate_reward_for_node(node: Dictionary) -> Dictionary:
     reward["claimed_item"] = item_reward.is_empty()
     return reward
 
+func _generate_shop_inventory(node_id: String) -> Dictionary:
+    var shop: Dictionary = {}
+    shop["node_id"] = node_id
+    shop["skills"] = _select_shop_entries(Data.get_dataset("skills"), 3, "skill")
+    shop["equipment"] = _select_shop_entries(Data.get_dataset("equipment"), 3, "equipment")
+    shop["items"] = _select_shop_entries(Data.get_dataset("items"), 5, "item")
+    return shop
+
+func _select_shop_entries(dataset: Variant, count: int, category: String) -> Array:
+    var pool: Array[Dictionary] = []
+    if dataset is Array:
+        for entry_variant in (dataset as Array):
+            if not (entry_variant is Dictionary):
+                continue
+            var entry: Dictionary = entry_variant
+            if not bool(entry.get("shop_available", true)):
+                continue
+            var built: Dictionary = _build_shop_entry(entry, category)
+            if built.is_empty():
+                continue
+            pool.append(built)
+    if pool.is_empty():
+        return []
+    var results: Array[Dictionary] = []
+    var taken: Array[int] = []
+    var unique_target: int = min(count, pool.size())
+    while results.size() < unique_target and taken.size() < pool.size():
+        var index: int = RNG.randi_range("loot", 0, pool.size() - 1)
+        if taken.has(index):
+            continue
+        taken.append(index)
+        results.append(pool[index].duplicate(true))
+    while results.size() < count and not pool.is_empty():
+        var duplicate_entry: Dictionary = pool[RNG.randi_range("loot", 0, pool.size() - 1)].duplicate(true)
+        results.append(duplicate_entry)
+    return results
+
+func _build_shop_entry(entry: Dictionary, category: String) -> Dictionary:
+    var id_value: String = str(entry.get("id", ""))
+    if id_value == "":
+        return Dictionary()
+    var base_price: float = float(entry.get("shop_base_price", entry.get("base_price", 0)))
+    var rarity: float = float(entry.get("shop_rarity", entry.get("rarity", 1.0)))
+    var quantity: int = int(entry.get("quantity", 1))
+    if base_price <= 0.0 and category != "skill":
+        base_price = 10.0
+    var price: int = _shop_price_for(base_price, rarity)
+    var result: Dictionary = {
+        "id": id_value,
+        "display_name": _localize_name(entry),
+        "price": price,
+        "rarity": rarity,
+        "base_price": base_price,
+        "category": category,
+        "sold": false,
+    }
+    match category:
+        "equipment":
+            result["slot"] = str(entry.get("slot", ""))
+        "item":
+            result["quantity"] = max(1, quantity)
+    return result
+
+func _shop_price_for(base_price: float, rarity: float) -> int:
+    var act_factor: float = max(1.0, float(_current_act))
+    var modifiers: Dictionary = Data.get_ascension_level(_ascension_level)
+    var cost_scale: float = float(modifiers.get("shop_cost_scale", 1.0))
+    var price: float = base_price * rarity * act_factor * cost_scale
+    return max(1, int(round(price)))
+
 func _compute_gold_reward(node_type: String) -> int:
     var base: float = float(GOLD_BASE_TABLE.get(node_type, GOLD_BASE_TABLE.get("battle", 20)))
     var act_scale: float = 1.0 + 0.18 * float(max(0, _current_act - 1))
@@ -694,6 +1034,50 @@ func _party_known_skill_ids() -> Array[String]:
                 result.append(skill_id)
     return result
 
+func _normalize_party_list(source: Variant) -> Array[Dictionary]:
+    var normalized: Array[Dictionary] = []
+    if source is Array:
+        for entry in (source as Array):
+            if entry is Dictionary:
+                normalized.append(_normalize_party_member(entry))
+    return normalized
+
+func _normalize_party_member(raw_member: Dictionary) -> Dictionary:
+    var member: Dictionary = raw_member.duplicate(true)
+    if not member.has("max_hp"):
+        member["max_hp"] = int(member.get("hp", 0))
+    if not member.has("max_mp"):
+        member["max_mp"] = int(member.get("mp", 0))
+    if not member.has("status") or not (member["status"] is Array):
+        member["status"] = []
+    if not member.has("equipment") or not (member["equipment"] is Dictionary):
+        member["equipment"] = {}
+    member["equipment_upgrades"] = _get_member_upgrade_state(member)
+    if not member.has("skills") or not (member["skills"] is Array):
+        member["skills"] = []
+    return member
+
+func _get_member_upgrade_state(member: Dictionary) -> Dictionary:
+    var normalized: Dictionary = {}
+    var raw_variant: Variant = member.get("equipment_upgrades", Dictionary())
+    if raw_variant is Dictionary:
+        var raw_dict: Dictionary = raw_variant
+        for key in raw_dict.keys():
+            var slot_name: String = str(key)
+            var value: int = int(raw_dict.get(key, 0))
+            normalized[slot_name] = value > 0 ? 1 : 0
+    var equipment_variant: Variant = member.get("equipment", Dictionary())
+    if equipment_variant is Dictionary:
+        var equipment: Dictionary = equipment_variant
+        for key in equipment.keys():
+            var slot_name: String = str(key)
+            if not normalized.has(slot_name):
+                normalized[slot_name] = 0
+    for default_slot in ["weapon", "head", "body", "accessory"]:
+        if not normalized.has(default_slot):
+            normalized[default_slot] = 0
+    return normalized
+
 func _localize_name(entry: Dictionary) -> String:
     var raw_name: Variant = entry.get("name")
     if raw_name is Dictionary:
@@ -705,6 +1089,36 @@ func _localize_name(entry: Dictionary) -> String:
     elif raw_name is String:
         return raw_name
     return str(entry.get("id", "???"))
+
+func _assign_equipment(member_index: int, slot: String, equip_id: String) -> bool:
+    if member_index < 0 or member_index >= _party_members.size():
+        return false
+    if slot == "" or equip_id == "":
+        return false
+    var member: Dictionary = _party_members[member_index]
+    var loadout: Dictionary = member.get("equipment", {})
+    loadout[slot] = equip_id
+    member["equipment"] = loadout
+    var upgrades: Dictionary = _get_member_upgrade_state(member)
+    upgrades[slot] = 0
+    member["equipment_upgrades"] = upgrades
+    member = _normalize_party_member(member)
+    _party_members[member_index] = member
+    return true
+
+func _learn_skill(member_index: int, skill_id: String) -> bool:
+    if member_index < 0 or member_index >= _party_members.size():
+        return false
+    if skill_id == "":
+        return false
+    var member: Dictionary = _party_members[member_index]
+    var skills: Array = member.get("skills", [])
+    if not skills.has(skill_id):
+        skills.append(skill_id)
+    member["skills"] = skills
+    member = _normalize_party_member(member)
+    _party_members[member_index] = member
+    return true
 
 func _find_inventory_index(item_id: String) -> int:
     for index in range(_inventory_items.size()):
@@ -731,11 +1145,13 @@ func _handle_act_completion(node: Dictionary) -> void:
         advance_act()
         _generate_act_map(_current_act)
         _pending_reward = {}
+        _current_shop = {}
         Save.autosave_async()
         set_state(GameState.MAP)
         return
     _map_state["available"] = []
     _pending_reward = {}
+    _current_shop = {}
     Save.autosave_async()
     set_state(GameState.MAP)
 
@@ -743,6 +1159,7 @@ func _complete_run() -> void:
     _current_act = 1
     _map_state = Dictionary()
     _pending_reward = {}
+    _current_shop = {}
     Save.autosave_async()
     set_state(GameState.TITLE)
 
@@ -767,6 +1184,35 @@ func _sanitize_map_state(raw_state: Dictionary) -> Dictionary:
                 columns.append(column_array)
     sanitized["columns"] = columns
     return sanitized
+
+func _sanitize_shop_state(raw_shop: Dictionary) -> Dictionary:
+    var sanitized: Dictionary = {}
+    sanitized["node_id"] = str(raw_shop.get("node_id", ""))
+    sanitized["skills"] = _sanitize_shop_entries(raw_shop.get("skills", []))
+    sanitized["equipment"] = _sanitize_shop_entries(raw_shop.get("equipment", []))
+    sanitized["items"] = _sanitize_shop_entries(raw_shop.get("items", []))
+    return sanitized
+
+func _sanitize_shop_entries(value: Variant) -> Array:
+    var result: Array[Dictionary] = []
+    if value is Array:
+        for entry_variant in (value as Array):
+            if not (entry_variant is Dictionary):
+                continue
+            var entry: Dictionary = (entry_variant as Dictionary).duplicate(true)
+            entry["id"] = str(entry.get("id", ""))
+            entry["display_name"] = str(entry.get("display_name", entry.get("id", "")))
+            entry["price"] = int(entry.get("price", 0))
+            entry["rarity"] = float(entry.get("rarity", 1.0))
+            entry["base_price"] = float(entry.get("base_price", 0.0))
+            entry["category"] = str(entry.get("category", ""))
+            entry["sold"] = bool(entry.get("sold", false))
+            if entry.has("slot"):
+                entry["slot"] = str(entry.get("slot", ""))
+            if entry.has("quantity"):
+                entry["quantity"] = int(entry.get("quantity", 1))
+            result.append(entry)
+    return result
 
 func _string_array_from(value: Variant) -> Array:
     var result: Array = []

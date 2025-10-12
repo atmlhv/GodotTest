@@ -9,7 +9,10 @@
     "element": "physical",
     "power": 1.0,
     "cost_mp": 0,
-    "target": "enemy_single"
+    "target": "enemy_single",
+    "shop_available": false,
+    "shop_base_price": 0,
+    "shop_rarity": 1.0
   },
   {
     "id": "fire_bolt",
@@ -21,6 +24,9 @@
     "element": "fire",
     "power": 1.2,
     "cost_mp": 6,
-    "target": "enemy_single"
+    "target": "enemy_single",
+    "shop_available": true,
+    "shop_base_price": 80,
+    "shop_rarity": 1.1
   }
 ]

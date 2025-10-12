@@ -52,6 +52,12 @@ func _on_inventory_updated(inventory: Array[Dictionary]) -> void:
 
 func _format_member_line(member_data: Dictionary) -> String:
     var name: String = member_data.get("name", "???")
+    var upgrades_variant: Variant = member_data.get("equipment_upgrades", {})
+    if upgrades_variant is Dictionary:
+        for value in (upgrades_variant as Dictionary).values():
+            if int(value) > 0:
+                name += "★"
+                break
     var hp: int = member_data.get("hp", 0)
     var max_hp: int = member_data.get("max_hp", hp)
     var mp: int = member_data.get("mp", 0)
