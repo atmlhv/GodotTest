@@ -12,6 +12,7 @@ func load_all() -> void:
     _cache["party_templates"] = _load_json("res://data/party_templates.json")
     _cache["skills"] = _load_json("res://data/skills.json")
     _cache["equipment"] = _load_json("res://data/equipment.json")
+    _cache["items"] = _load_json("res://data/items.json")
     _cache["ascension"] = _load_json("res://data/ascension.json")
     data_loaded.emit()
 
@@ -35,6 +36,12 @@ func get_skill_by_id(skill_id: String) -> Dictionary:
 func get_equipment_by_id(equip_id: String) -> Dictionary:
     for entry in _cache.get("equipment", Array()):
         if entry.get("id") == equip_id:
+            return entry
+    return Dictionary()
+
+func get_item_by_id(item_id: String) -> Dictionary:
+    for entry in _cache.get("items", Array()):
+        if entry.get("id") == item_id:
             return entry
     return Dictionary()
 

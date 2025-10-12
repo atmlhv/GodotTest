@@ -1,0 +1,29 @@
+[
+  {
+    "id": "potion_minor",
+    "name": {
+      "en": "Minor Potion",
+      "ja": "かんたんポーション"
+    },
+    "effect": "heal_hp",
+    "value": 40
+  },
+  {
+    "id": "ether_minor",
+    "name": {
+      "en": "Minor Ether",
+      "ja": "かんたんエーテル"
+    },
+    "effect": "heal_mp",
+    "value": 20
+  },
+  {
+    "id": "smoke_bomb",
+    "name": {
+      "en": "Smoke Bomb",
+      "ja": "スモークボム"
+    },
+    "effect": "escape",
+    "value": 1
+  }
+]

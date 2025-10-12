@@ -2,6 +2,8 @@ extends Node
 
 signal party_updated
 signal ascension_updated(level: int)
+signal gold_updated(amount: int)
+signal inventory_updated(inventory: Array[Dictionary])
 
 enum GameState {
     TITLE,
@@ -31,6 +33,15 @@ const MAP_NODE_WEIGHT_TABLE: Dictionary = {
     "elite": 1,
 }
 
+const MAX_ITEM_SLOTS: int = 3
+const GOLD_BASE_TABLE: Dictionary = {
+    "battle": 26,
+    "elite": 55,
+    "boss": 120,
+    "event": 12,
+}
+const GOLD_VARIANCE: int = 8
+
 var _current_state: GameState = GameState.TITLE
 var current_state: GameState:
     get:
@@ -42,11 +53,16 @@ var _ascension_level: int = 0
 var _rng_seeds: Dictionary = Dictionary()
 var _current_act: int = 1
 var _map_state: Dictionary = Dictionary()
+var _gold: int = 0
+var _inventory_items: Array[Dictionary] = []
+var _pending_reward: Dictionary = {}
 
 func _ready() -> void:
     Data.data_loaded.connect(_on_data_loaded)
     Save.run_loaded.connect(_on_run_loaded)
     ascension_updated.emit(_ascension_level)
+    gold_updated.emit(_gold)
+    inventory_updated.emit(get_inventory())
 
 func new_run(seed: int, ascension_level: int) -> void:
     _ascension_level = ascension_level
@@ -54,6 +70,11 @@ func new_run(seed: int, ascension_level: int) -> void:
     RNG.initialize_seeds(seed)
     _party_members = Data.create_default_party()
     party_updated.emit()
+    _gold = 0
+    _inventory_items = []
+    _pending_reward = {}
+    gold_updated.emit(_gold)
+    inventory_updated.emit(get_inventory())
     _current_act = 1
     _generate_act_map(_current_act)
     _rng_seeds = RNG.get_seeds_snapshot()
@@ -82,6 +103,78 @@ func update_party_member(index: int, payload: Dictionary) -> void:
 
 func get_ascension_level() -> int:
     return _ascension_level
+
+func get_gold() -> int:
+    return _gold
+
+func add_gold(amount: int) -> void:
+    if amount == 0:
+        return
+    _gold = max(0, _gold + amount)
+    gold_updated.emit(_gold)
+    Save.autosave_debounced()
+
+func spend_gold(amount: int) -> bool:
+    if amount <= 0:
+        return true
+    if amount > _gold:
+        return false
+    _gold -= amount
+    gold_updated.emit(_gold)
+    Save.autosave_debounced()
+    return true
+
+func get_max_item_slots() -> int:
+    return MAX_ITEM_SLOTS
+
+func get_inventory() -> Array[Dictionary]:
+    var snapshot: Array[Dictionary] = []
+    for entry in _inventory_items:
+        snapshot.append(entry.duplicate(true))
+    return snapshot
+
+func add_item_to_inventory(item_id: String, quantity: int = 1) -> bool:
+    if item_id == "":
+        return true
+    var index: int = _find_inventory_index(item_id)
+    if index != -1:
+        var entry: Dictionary = _inventory_items[index]
+        entry["quantity"] = int(entry.get("quantity", 1)) + max(1, quantity)
+        _inventory_items[index] = entry
+        inventory_updated.emit(get_inventory())
+        Save.autosave_debounced()
+        return true
+    if _inventory_items.size() >= MAX_ITEM_SLOTS:
+        return false
+    var new_entry: Dictionary = {
+        "id": item_id,
+        "quantity": max(1, quantity),
+    }
+    _inventory_items.append(new_entry)
+    inventory_updated.emit(get_inventory())
+    Save.autosave_debounced()
+    return true
+
+func replace_inventory_item(slot_index: int, item_id: String, quantity: int = 1) -> bool:
+    if slot_index < 0 or slot_index >= _inventory_items.size():
+        return false
+    if item_id == "":
+        return false
+    var new_entry: Dictionary = {
+        "id": item_id,
+        "quantity": max(1, quantity),
+    }
+    _inventory_items[slot_index] = new_entry
+    inventory_updated.emit(get_inventory())
+    Save.autosave_debounced()
+    return true
+
+func remove_inventory_slot(slot_index: int) -> void:
+    if slot_index < 0 or slot_index >= _inventory_items.size():
+        return
+    _inventory_items.remove_at(slot_index)
+    inventory_updated.emit(get_inventory())
+    Save.autosave_debounced()
 
 func set_ascension_level(level: int) -> void:
     if level == _ascension_level:
@@ -132,7 +225,141 @@ func enter_map_node(node_id: String) -> void:
     set_state(_state_for_node_type(node.get("type", "battle")))
 
 func open_rewards() -> void:
+    ensure_reward_for_active_node()
     set_state(GameState.REWARD)
+
+func ensure_reward_for_active_node() -> Dictionary:
+    if not _pending_reward.is_empty():
+        return _pending_reward.duplicate(true)
+    var active_id: String = str(_map_state.get("active", ""))
+    if active_id == "":
+        _pending_reward = {}
+        return Dictionary()
+    var node: Dictionary = _find_map_node(active_id)
+    if node.is_empty():
+        _pending_reward = {}
+        return Dictionary()
+    _pending_reward = _generate_reward_for_node(node)
+    return _pending_reward.duplicate(true)
+
+func get_pending_reward() -> Dictionary:
+    return _pending_reward.duplicate(true)
+
+func claim_reward_gold() -> int:
+    if _pending_reward.is_empty():
+        return 0
+    if _pending_reward.get("claimed_gold", false):
+        return int(_pending_reward.get("gold", 0))
+    var amount: int = int(_pending_reward.get("gold", 0))
+    if amount > 0:
+        add_gold(amount)
+    _pending_reward["claimed_gold"] = true
+    Save.autosave_debounced()
+    return amount
+
+func claim_reward_equipment(choice_index: int, member_index: int) -> bool:
+    if _pending_reward.is_empty():
+        return false
+    if _pending_reward.get("claimed_equipment", false):
+        return false
+    var choices: Array = _pending_reward.get("equipment_choices", [])
+    if choice_index < 0 or choice_index >= choices.size():
+        return false
+    if member_index < 0 or member_index >= _party_members.size():
+        return false
+    var choice_variant: Variant = choices[choice_index]
+    if not (choice_variant is Dictionary):
+        return false
+    var equipment: Dictionary = choice_variant
+    var slot: String = str(equipment.get("slot", ""))
+    var equip_id: String = str(equipment.get("id", ""))
+    if slot == "" or equip_id == "":
+        return false
+    var member: Dictionary = _party_members[member_index].duplicate(true)
+    var loadout: Dictionary = member.get("equipment", {})
+    loadout[slot] = equip_id
+    member["equipment"] = loadout
+    _party_members[member_index] = member
+    _pending_reward["claimed_equipment"] = true
+    _pending_reward["selected_equipment"] = choice_index
+    _pending_reward["equipment_target"] = member_index
+    party_updated.emit()
+    Save.autosave_debounced()
+    return true
+
+func claim_reward_skill(choice_index: int, member_index: int) -> bool:
+    if _pending_reward.is_empty():
+        return false
+    if _pending_reward.get("claimed_skill", false):
+        return false
+    var choices: Array = _pending_reward.get("skill_choices", [])
+    if choice_index < 0 or choice_index >= choices.size():
+        return false
+    if member_index < 0 or member_index >= _party_members.size():
+        return false
+    var choice_variant: Variant = choices[choice_index]
+    if not (choice_variant is Dictionary):
+        return false
+    var skill_id: String = str(choice_variant.get("id", ""))
+    if skill_id == "":
+        return false
+    var member: Dictionary = _party_members[member_index].duplicate(true)
+    var skills: Array = member.get("skills", [])
+    if not skills.has(skill_id):
+        skills.append(skill_id)
+    member["skills"] = skills
+    _party_members[member_index] = member
+    _pending_reward["claimed_skill"] = true
+    _pending_reward["selected_skill"] = choice_index
+    _pending_reward["skill_target"] = member_index
+    party_updated.emit()
+    Save.autosave_debounced()
+    return true
+
+func try_claim_reward_item() -> bool:
+    if _pending_reward.is_empty():
+        return true
+    if _pending_reward.get("claimed_item", false):
+        return true
+    var reward_item: Dictionary = _pending_reward.get("item_reward", Dictionary())
+    if reward_item.is_empty():
+        _pending_reward["claimed_item"] = true
+        return true
+    var item_id: String = str(reward_item.get("id", ""))
+    if item_id == "":
+        _pending_reward["claimed_item"] = true
+        return true
+    var quantity: int = int(reward_item.get("quantity", 1))
+    if add_item_to_inventory(item_id, quantity):
+        _pending_reward["claimed_item"] = true
+        Save.autosave_debounced()
+        return true
+    return false
+
+func replace_reward_item(slot_index: int) -> bool:
+    if _pending_reward.is_empty():
+        return false
+    if _pending_reward.get("claimed_item", false):
+        return false
+    var reward_item: Dictionary = _pending_reward.get("item_reward", Dictionary())
+    if reward_item.is_empty():
+        _pending_reward["claimed_item"] = true
+        return true
+    var item_id: String = str(reward_item.get("id", ""))
+    if item_id == "":
+        return false
+    var quantity: int = int(reward_item.get("quantity", 1))
+    if replace_inventory_item(slot_index, item_id, quantity):
+        _pending_reward["claimed_item"] = true
+        Save.autosave_debounced()
+        return true
+    return false
+
+func discard_reward_item() -> void:
+    if _pending_reward.is_empty():
+        return
+    _pending_reward["claimed_item"] = true
+    Save.autosave_debounced()
 
 func finish_current_node() -> void:
     if _map_state.is_empty():
@@ -153,6 +380,7 @@ func finish_current_node() -> void:
         _handle_act_completion(node)
         return
     _map_state["available"] = connections.duplicate()
+    _pending_reward = {}
     Save.autosave_async()
     set_state(GameState.MAP)
 
@@ -165,6 +393,9 @@ func snapshot_for_save() -> Dictionary:
     snapshot["state"] = int(_current_state)
     snapshot["act"] = _current_act
     snapshot["map_state"] = _map_state.duplicate(true)
+    snapshot["gold"] = _gold
+    snapshot["inventory"] = get_inventory()
+    snapshot["pending_reward"] = _pending_reward.duplicate(true)
     return snapshot
 
 func restore_from_save(snapshot: Dictionary) -> void:
@@ -188,8 +419,22 @@ func restore_from_save(snapshot: Dictionary) -> void:
         _map_state = _sanitize_map_state(saved_map as Dictionary)
     else:
         _map_state = Dictionary()
+    _gold = int(snapshot.get("gold", 0))
+    var saved_inventory: Variant = snapshot.get("inventory", Array())
+    _inventory_items = []
+    if saved_inventory is Array:
+        for entry in saved_inventory:
+            if entry is Dictionary:
+                _inventory_items.append((entry as Dictionary).duplicate(true))
+    var saved_reward: Variant = snapshot.get("pending_reward", Dictionary())
+    if saved_reward is Dictionary:
+        _pending_reward = (saved_reward as Dictionary).duplicate(true)
+    else:
+        _pending_reward = {}
     party_updated.emit()
     ascension_updated.emit(_ascension_level)
+    gold_updated.emit(_gold)
+    inventory_updated.emit(get_inventory())
     set_state(_state_from_variant(state_value))
 
 func _on_data_loaded() -> void:
@@ -329,6 +574,145 @@ func _state_for_node_type(node_type: String) -> GameState:
         _:
             return GameState.MAP
 
+func _generate_reward_for_node(node: Dictionary) -> Dictionary:
+    var reward: Dictionary = {}
+    var node_type: String = str(node.get("type", "battle"))
+    reward["node_id"] = str(node.get("id", ""))
+    reward["node_type"] = node_type
+    var gold_amount: int = _compute_gold_reward(node_type)
+    reward["gold"] = gold_amount
+    reward["equipment_choices"] = _select_equipment_choices(3)
+    var skill_choices: Array = _roll_skill_choices()
+    reward["skill_choices"] = skill_choices
+    var item_reward: Dictionary = _roll_item_reward()
+    reward["item_reward"] = item_reward
+    reward["claimed_gold"] = gold_amount <= 0
+    reward["claimed_equipment"] = reward["equipment_choices"].is_empty()
+    reward["claimed_skill"] = skill_choices.is_empty()
+    reward["claimed_item"] = item_reward.is_empty()
+    return reward
+
+func _compute_gold_reward(node_type: String) -> int:
+    var base: float = float(GOLD_BASE_TABLE.get(node_type, GOLD_BASE_TABLE.get("battle", 20)))
+    var act_scale: float = 1.0 + 0.18 * float(max(0, _current_act - 1))
+    base *= act_scale
+    var modifiers: Dictionary = Data.get_ascension_level(_ascension_level)
+    var reward_scale: float = float(modifiers.get("reward_gold_scale", 1.0))
+    base *= reward_scale
+    var variance: int = 0
+    if GOLD_VARIANCE > 0:
+        variance = RNG.randi_range("loot", -GOLD_VARIANCE, GOLD_VARIANCE)
+    var total: int = int(round(base)) + variance
+    return max(0, total)
+
+func _select_equipment_choices(count: int) -> Array:
+    var dataset: Variant = Data.get_dataset("equipment")
+    var pool: Array = dataset if dataset is Array else []
+    var selections: Array = []
+    if pool.is_empty():
+        return selections
+    var taken: Array[int] = []
+    var limit: int = min(count, pool.size())
+    while selections.size() < limit and taken.size() < pool.size():
+        var index: int = RNG.randi_range("loot", 0, pool.size() - 1)
+        if taken.has(index):
+            continue
+        taken.append(index)
+        var candidate: Variant = pool[index]
+        if candidate is Dictionary:
+            var entry: Dictionary = (candidate as Dictionary).duplicate(true)
+            entry["display_name"] = _localize_name(entry)
+            selections.append(entry)
+    return selections
+
+func _roll_skill_choices() -> Array:
+    var results: Array = []
+    var drop_chance: float = float(Balance.DEFAULTS.get("p_skill_drop", 0.35))
+    if RNG.randf_range("loot", 0.0, 1.0) >= drop_chance:
+        return results
+    var dataset: Variant = Data.get_dataset("skills")
+    var pool: Array = dataset if dataset is Array else []
+    if pool.is_empty():
+        return results
+    var known_ids: Array[String] = _party_known_skill_ids()
+    var available: Array = []
+    for entry in pool:
+        if entry is Dictionary:
+            var skill_id: String = str(entry.get("id", ""))
+            if skill_id == "":
+                continue
+            if not known_ids.has(skill_id):
+                var copy: Dictionary = (entry as Dictionary).duplicate(true)
+                copy["display_name"] = _localize_name(copy)
+                available.append(copy)
+    if available.is_empty():
+        for entry in pool:
+            if entry is Dictionary:
+                var copy_all: Dictionary = (entry as Dictionary).duplicate(true)
+                copy_all["display_name"] = _localize_name(copy_all)
+                available.append(copy_all)
+    if available.is_empty():
+        return results
+    var taken: Array[int] = []
+    var limit: int = min(3, available.size())
+    while results.size() < limit and taken.size() < available.size():
+        var index: int = RNG.randi_range("loot", 0, available.size() - 1)
+        if taken.has(index):
+            continue
+        taken.append(index)
+        results.append((available[index] as Dictionary).duplicate(true))
+    return results
+
+func _roll_item_reward() -> Dictionary:
+    var drop_chance: float = float(Balance.DEFAULTS.get("p_item_drop", 0.4))
+    if RNG.randf_range("loot", 0.0, 1.0) >= drop_chance:
+        return Dictionary()
+    var dataset: Variant = Data.get_dataset("items")
+    var pool: Array = dataset if dataset is Array else []
+    if pool.is_empty():
+        return Dictionary()
+    var choice_variant: Variant = RNG.choice("loot", pool)
+    if not (choice_variant is Dictionary):
+        return Dictionary()
+    var item: Dictionary = (choice_variant as Dictionary).duplicate(true)
+    item["display_name"] = _localize_name(item)
+    if not item.has("quantity"):
+        item["quantity"] = 1
+    return item
+
+func _party_known_skill_ids() -> Array[String]:
+    var result: Array[String] = []
+    for member_variant in _party_members:
+        if not (member_variant is Dictionary):
+            continue
+        var skills: Array = (member_variant as Dictionary).get("skills", [])
+        for skill_variant in skills:
+            var skill_id: String = str(skill_variant)
+            if skill_id == "":
+                continue
+            if not result.has(skill_id):
+                result.append(skill_id)
+    return result
+
+func _localize_name(entry: Dictionary) -> String:
+    var raw_name: Variant = entry.get("name")
+    if raw_name is Dictionary:
+        var dict_name: Dictionary = raw_name
+        if dict_name.has("ja"):
+            return str(dict_name["ja"])
+        if dict_name.has("en"):
+            return str(dict_name["en"])
+    elif raw_name is String:
+        return raw_name
+    return str(entry.get("id", "???"))
+
+func _find_inventory_index(item_id: String) -> int:
+    for index in range(_inventory_items.size()):
+        var entry: Dictionary = _inventory_items[index]
+        if str(entry.get("id", "")) == item_id:
+            return index
+    return -1
+
 func _find_map_node(node_id: String) -> Dictionary:
     var columns: Array = _map_state.get("columns", [])
     for column_variant in columns:
@@ -346,16 +730,19 @@ func _handle_act_completion(node: Dictionary) -> void:
             return
         advance_act()
         _generate_act_map(_current_act)
+        _pending_reward = {}
         Save.autosave_async()
         set_state(GameState.MAP)
         return
     _map_state["available"] = []
+    _pending_reward = {}
     Save.autosave_async()
     set_state(GameState.MAP)
 
 func _complete_run() -> void:
     _current_act = 1
     _map_state = Dictionary()
+    _pending_reward = {}
     Save.autosave_async()
     set_state(GameState.TITLE)
 

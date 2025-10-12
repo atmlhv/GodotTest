@@ -1,5 +1,26 @@
 [
-  { "level": 0, "hp_scale": 1.0, "atk_scale": 1.0, "shop_cost_scale": 1.0, "rest_heal_scale": 1.0 },
-  { "level": 1, "hp_scale": 1.05, "atk_scale": 1.02, "shop_cost_scale": 1.05, "rest_heal_scale": 0.95 },
-  { "level": 2, "hp_scale": 1.1, "atk_scale": 1.05, "shop_cost_scale": 1.1, "rest_heal_scale": 0.9 }
+  {
+    "level": 0,
+    "hp_scale": 1.0,
+    "atk_scale": 1.0,
+    "shop_cost_scale": 1.0,
+    "rest_heal_scale": 1.0,
+    "reward_gold_scale": 1.0
+  },
+  {
+    "level": 1,
+    "hp_scale": 1.05,
+    "atk_scale": 1.02,
+    "shop_cost_scale": 1.05,
+    "rest_heal_scale": 0.95,
+    "reward_gold_scale": 0.95
+  },
+  {
+    "level": 2,
+    "hp_scale": 1.1,
+    "atk_scale": 1.05,
+    "shop_cost_scale": 1.1,
+    "rest_heal_scale": 0.9,
+    "reward_gold_scale": 0.9
+  }
 ]
