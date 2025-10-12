@@ -1,0 +1,50 @@
+[
+  {
+    "id": "hero",
+    "name": "Hero",
+    "starter": true,
+    "role": "warrior",
+    "hp": 120,
+    "max_hp": 120,
+    "mp": 20,
+    "max_mp": 20,
+    "atk": 18,
+    "def": 12,
+    "agi": 10,
+    "matk": 8,
+    "rec": 5,
+    "crit": 0.05,
+    "critx": 1.5,
+    "skills": ["attack_basic"],
+    "equipment": {
+      "weapon": "rusty_sword",
+      "head": null,
+      "body": "leather_armor",
+      "accessory": null
+    }
+  },
+  {
+    "id": "mage",
+    "name": "Mage",
+    "starter": true,
+    "role": "caster",
+    "hp": 80,
+    "max_hp": 80,
+    "mp": 50,
+    "max_mp": 50,
+    "atk": 6,
+    "def": 8,
+    "agi": 12,
+    "matk": 20,
+    "rec": 7,
+    "crit": 0.05,
+    "critx": 1.5,
+    "skills": ["attack_basic", "fire_bolt"],
+    "equipment": {
+      "weapon": "apprentice_staff",
+      "head": "cloth_hat",
+      "body": "robe",
+      "accessory": null
+    }
+  }
+]
