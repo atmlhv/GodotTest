@@ -9,7 +9,7 @@ func _ready() -> void:
     Game.ascension_updated.connect(_on_ascension_updated)
 
 func _refresh_panel() -> void:
-    var lines: Array[String] = Array[String]()
+    var lines: Array[String] = []
     for member_data in Game.get_party_overview():
         lines.append(_format_member_line(member_data))
     if lines.is_empty():

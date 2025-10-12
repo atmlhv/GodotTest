@@ -20,7 +20,7 @@ func get_dataset(name: String) -> Variant:
 
 func create_default_party() -> Array[Dictionary]:
     var party_templates: Array = _cache.get("party_templates", Array())
-    var starters: Array[Dictionary] = Array[Dictionary]()
+    var starters: Array[Dictionary] = []
     for template in party_templates:
         if template.get("starter", false):
             starters.append(template.duplicate(true))

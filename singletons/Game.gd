@@ -18,7 +18,7 @@ var current_state: GameState:
         return _current_state
     set(value):
         set_state(value)
-var _party_members: Array[Dictionary] = Array[Dictionary]()
+var _party_members: Array[Dictionary] = []
 var _ascension_level: int = 0
 var _rng_seeds: Dictionary = Dictionary()
 var _current_act: int = 1
@@ -47,7 +47,7 @@ func set_state(value: GameState) -> void:
     # TODO: add transition handling
 
 func get_party_overview() -> Array[Dictionary]:
-    var clone: Array[Dictionary] = Array[Dictionary]()
+    var clone: Array[Dictionary] = []
     for entry in _party_members:
         clone.append(entry.duplicate(true))
     return clone
@@ -97,7 +97,7 @@ func snapshot_for_save() -> Dictionary:
 
 func restore_from_save(snapshot: Dictionary) -> void:
     var saved_party: Variant = snapshot.get("party", Array())
-    _party_members = Array[Dictionary]()
+    _party_members = []
     if saved_party is Array:
         for entry in saved_party:
             if entry is Dictionary:
