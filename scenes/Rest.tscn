@@ -32,6 +32,12 @@ size_flags_horizontal = 4
 horizontal_alignment = 1
 text = "Rest options"
 
+[node name="ResultLabel" type="Label" parent="VBox"]
+layout_mode = 2
+size_flags_horizontal = 4
+horizontal_alignment = 1
+text = ""
+
 [node name="HealHPButton" type="Button" parent="VBox"]
 layout_mode = 2
 size_flags_horizontal = 4
@@ -46,3 +52,34 @@ text = "Heal MP"
 layout_mode = 2
 size_flags_horizontal = 4
 text = "Forge Equipment"
+
+[node name="SmithContainer" type="VBoxContainer" parent="VBox"]
+layout_mode = 2
+size_flags_horizontal = 4
+alignment = 1
+visible = false
+
+[node name="SmithInfo" type="Label" parent="VBox/SmithContainer"]
+layout_mode = 2
+size_flags_horizontal = 4
+horizontal_alignment = 1
+text = "Select equipment to upgrade"
+
+[node name="SmithSelect" type="OptionButton" parent="VBox/SmithContainer"]
+layout_mode = 2
+size_flags_horizontal = 4
+
+[node name="SmithButtons" type="HBoxContainer" parent="VBox/SmithContainer"]
+layout_mode = 2
+size_flags_horizontal = 4
+alignment = 1
+
+[node name="SmithConfirm" type="Button" parent="VBox/SmithContainer/SmithButtons"]
+layout_mode = 2
+size_flags_horizontal = 2
+text = "Upgrade"
+
+[node name="SmithCancel" type="Button" parent="VBox/SmithContainer/SmithButtons"]
+layout_mode = 2
+size_flags_horizontal = 2
+text = "Cancel"
