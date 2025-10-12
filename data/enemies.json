@@ -1,0 +1,44 @@
+[
+  {
+    "id": "slime_basic",
+    "name": "Blue Slime",
+    "hp": 60,
+    "mp": 0,
+    "atk": 12,
+    "def": 6,
+    "agi": 8,
+    "matk": 4,
+    "rec": 3,
+    "crit": 0.02,
+    "critx": 1.4,
+    "skills": ["attack_basic"]
+  },
+  {
+    "id": "slime_mage",
+    "name": "Magus Slime",
+    "hp": 55,
+    "mp": 18,
+    "atk": 9,
+    "def": 5,
+    "agi": 9,
+    "matk": 12,
+    "rec": 4,
+    "crit": 0.03,
+    "critx": 1.5,
+    "skills": ["fire_bolt", "attack_basic"]
+  },
+  {
+    "id": "slime_guardian",
+    "name": "Guardian Slime",
+    "hp": 80,
+    "mp": 6,
+    "atk": 14,
+    "def": 10,
+    "agi": 7,
+    "matk": 6,
+    "rec": 3,
+    "crit": 0.02,
+    "critx": 1.4,
+    "skills": ["attack_basic"]
+  }
+]
