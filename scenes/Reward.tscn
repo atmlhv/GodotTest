@@ -18,19 +18,136 @@ anchor_right = 1.0
 [node name="VBox" type="VBoxContainer" parent="."]
 layout_mode = 1
 anchors_preset = 15
-anchor_left = 0.32
-anchor_right = 0.68
-anchor_top = 0.3
-anchor_bottom = 0.7
+anchor_left = 0.26
+anchor_right = 0.74
+anchor_top = 0.18
+anchor_bottom = 0.82
 size_flags_horizontal = 4
 size_flags_vertical = 4
-alignment = 1
+custom_constants/separation = 12
 
 [node name="InfoLabel" type="Label" parent="VBox"]
 layout_mode = 2
 size_flags_horizontal = 4
 horizontal_alignment = 1
-text = "Reward overview"
+text = "Rewards"
+
+[node name="Separator1" type="HSeparator" parent="VBox"]
+layout_mode = 2
+
+[node name="GoldSection" type="VBoxContainer" parent="VBox"]
+layout_mode = 2
+size_flags_horizontal = 4
+custom_constants/separation = 6
+
+[node name="GoldLabel" type="Label" parent="VBox/GoldSection"]
+layout_mode = 2
+text = "Gold: --"
+
+[node name="ClaimGoldButton" type="Button" parent="VBox/GoldSection"]
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Take Gold"
+
+[node name="Separator2" type="HSeparator" parent="VBox"]
+layout_mode = 2
+
+[node name="EquipmentSection" type="VBoxContainer" parent="VBox"]
+layout_mode = 2
+size_flags_horizontal = 4
+custom_constants/separation = 6
+
+[node name="SectionLabel" type="Label" parent="VBox/EquipmentSection"]
+layout_mode = 2
+text = "Equipment Reward"
+
+[node name="EquipmentList" type="ItemList" parent="VBox/EquipmentSection"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+select_mode = 1
+
+[node name="TargetSelect" type="OptionButton" parent="VBox/EquipmentSection"]
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Target"
+
+[node name="EquipButton" type="Button" parent="VBox/EquipmentSection"]
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Equip"
+
+[node name="Separator3" type="HSeparator" parent="VBox"]
+layout_mode = 2
+
+[node name="SkillSection" type="VBoxContainer" parent="VBox"]
+layout_mode = 2
+size_flags_horizontal = 4
+custom_constants/separation = 6
+
+[node name="SectionLabel" type="Label" parent="VBox/SkillSection"]
+layout_mode = 2
+text = "Skill Reward"
+
+[node name="SkillList" type="ItemList" parent="VBox/SkillSection"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+select_mode = 1
+
+[node name="TargetSelect" type="OptionButton" parent="VBox/SkillSection"]
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Target"
+
+[node name="LearnButton" type="Button" parent="VBox/SkillSection"]
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Learn"
+
+[node name="Separator4" type="HSeparator" parent="VBox"]
+layout_mode = 2
+
+[node name="ItemSection" type="VBoxContainer" parent="VBox"]
+layout_mode = 2
+size_flags_horizontal = 4
+custom_constants/separation = 6
+
+[node name="ItemLabel" type="Label" parent="VBox/ItemSection"]
+layout_mode = 2
+text = "Item Reward"
+
+[node name="ItemStatus" type="Label" parent="VBox/ItemSection"]
+layout_mode = 2
+size_flags_horizontal = 4
+text = ""
+
+[node name="ClaimButton" type="Button" parent="VBox/ItemSection"]
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Add to inventory"
+
+[node name="ReplaceRow" type="HBoxContainer" parent="VBox/ItemSection"]
+layout_mode = 2
+size_flags_horizontal = 4
+custom_constants/separation = 8
+visible = false
+
+[node name="ReplaceSelect" type="OptionButton" parent="VBox/ItemSection/ReplaceRow"]
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Replace"
+
+[node name="ReplaceButton" type="Button" parent="VBox/ItemSection/ReplaceRow"]
+layout_mode = 2
+text = "Replace"
+
+[node name="DiscardButton" type="Button" parent="VBox/ItemSection/ReplaceRow"]
+layout_mode = 2
+text = "Discard"
+
+[node name="Separator5" type="HSeparator" parent="VBox"]
+layout_mode = 2
 
 [node name="ContinueButton" type="Button" parent="VBox"]
 layout_mode = 2

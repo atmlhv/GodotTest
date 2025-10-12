@@ -40,6 +40,22 @@ text = "Party Overview"
 layout_mode = 2
 text = "No party members loaded"
 
+[node name="Resources" type="VBoxContainer" parent="HBox"]
+layout_mode = 2
+size_flags_horizontal = 1
+
+[node name="ResourcesTitle" type="Label" parent="HBox/Resources"]
+layout_mode = 2
+text = "Resources"
+
+[node name="GoldLabel" type="Label" parent="HBox/Resources"]
+layout_mode = 2
+text = "Gold: 0"
+
+[node name="ItemsLabel" type="Label" parent="HBox/Resources"]
+layout_mode = 2
+text = "Items: (empty)"
+
 [node name="AscensionInfo" type="VBoxContainer" parent="HBox"]
 layout_mode = 2
 size_flags_horizontal = 1
