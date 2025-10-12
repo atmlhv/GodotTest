@@ -8,14 +8,14 @@ func _ready() -> void:
 	load_all()
 
 func load_all() -> void:
-        _cache.clear()
-        _cache["party_templates"] = _load_json("res://data/party_templates.json")
-        _cache["skills"] = _load_json("res://data/skills.json")
-        _cache["equipment"] = _load_json("res://data/equipment.json")
-        _cache["items"] = _load_json("res://data/items.json")
-        _cache["enemies"] = _load_json("res://data/enemies.json")
-        _cache["ascension"] = _load_json("res://data/ascension.json")
-        data_loaded.emit()
+	_cache.clear()
+	_cache["party_templates"] = _load_json("res://data/party_templates.json")
+	_cache["skills"] = _load_json("res://data/skills.json")
+	_cache["equipment"] = _load_json("res://data/equipment.json")
+	_cache["items"] = _load_json("res://data/items.json")
+	_cache["enemies"] = _load_json("res://data/enemies.json")
+	_cache["ascension"] = _load_json("res://data/ascension.json")
+	data_loaded.emit()
 
 func get_dataset(name: String) -> Variant:
 	return _cache.get(name)
@@ -41,16 +41,16 @@ func get_equipment_by_id(equip_id: String) -> Dictionary:
 	return Dictionary()
 
 func get_item_by_id(item_id: String) -> Dictionary:
-        for entry in _cache.get("items", Array()):
-                if entry.get("id") == item_id:
-                        return entry
-        return Dictionary()
+	for entry in _cache.get("items", Array()):
+		if entry.get("id") == item_id:
+			return entry
+	return Dictionary()
 
 func get_enemy_by_id(enemy_id: String) -> Dictionary:
-        for entry in _cache.get("enemies", Array()):
-                if entry.get("id") == enemy_id:
-                        return entry
-        return Dictionary()
+	for entry in _cache.get("enemies", Array()):
+		if entry.get("id") == enemy_id:
+			return entry
+	return Dictionary()
 
 func get_ascension_level(level: int) -> Dictionary:
 	var table: Array = _cache.get("ascension", Array())
