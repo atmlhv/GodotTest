@@ -2,6 +2,10 @@ extends Control
 
 var reward_data: Dictionary = {}
 var awaiting_replace_choice: bool = false
+var _equipment_list_default_focus_mode: int
+var _equipment_list_default_mouse_filter: int
+var _skill_list_default_focus_mode: int
+var _skill_list_default_mouse_filter: int
 
 @onready var info_label: Label = $VBox/InfoLabel
 @onready var gold_label: Label = $VBox/GoldSection/GoldLabel
@@ -25,6 +29,10 @@ var awaiting_replace_choice: bool = false
 
 func _ready() -> void:
     reward_data = Game.ensure_reward_for_active_node()
+    _equipment_list_default_focus_mode = equipment_list.focus_mode
+    _equipment_list_default_mouse_filter = equipment_list.mouse_filter
+    _skill_list_default_focus_mode = skill_list.focus_mode
+    _skill_list_default_mouse_filter = skill_list.mouse_filter
     _populate_party_targets()
     gold_button.pressed.connect(_on_claim_gold_pressed)
     equipment_button.pressed.connect(_on_equip_pressed)
@@ -89,7 +97,7 @@ func _refresh_equipment_section() -> void:
     equipment_list.clear()
     if choices.is_empty():
         equipment_label.text = "No equipment reward"
-        equipment_list.disabled = true
+        _set_equipment_list_enabled(false)
         equipment_button.disabled = true
         equipment_target.disabled = true
         return
@@ -101,14 +109,14 @@ func _refresh_equipment_section() -> void:
         var text: String = name if slot == "" else "%s [%s]" % [name, slot.capitalize()]
         equipment_list.add_item(text)
     if not claimed:
-        equipment_list.disabled = false
+        _set_equipment_list_enabled(true)
         equipment_button.disabled = false
         equipment_target.disabled = equipment_target.item_count == 0
         if equipment_list.item_count > 0:
             equipment_list.select(0)
     else:
         equipment_label.text = "Equipment reward claimed"
-        equipment_list.disabled = true
+        _set_equipment_list_enabled(false)
         equipment_button.disabled = true
         equipment_target.disabled = true
 
@@ -118,7 +126,7 @@ func _refresh_skill_section() -> void:
     skill_list.clear()
     if choices.is_empty():
         skill_label.text = "No skill drop"
-        skill_list.disabled = true
+        _set_skill_list_enabled(false)
         skill_button.disabled = true
         skill_target.disabled = true
         return
@@ -128,14 +136,14 @@ func _refresh_skill_section() -> void:
         var name: String = str(entry.get("display_name", entry.get("id", "???")))
         skill_list.add_item(name)
     if not claimed:
-        skill_list.disabled = false
+        _set_skill_list_enabled(true)
         skill_button.disabled = false
         skill_target.disabled = skill_target.item_count == 0
         if skill_list.item_count > 0:
             skill_list.select(0)
     else:
         skill_label.text = "Skill reward claimed"
-        skill_list.disabled = true
+        _set_skill_list_enabled(false)
         skill_button.disabled = true
         skill_target.disabled = true
 
@@ -287,3 +295,13 @@ func _selected_replace_slot() -> int:
     if selected_id >= 0:
         return selected_id
     return replace_select.get_selected()
+
+func _set_equipment_list_enabled(enabled: bool) -> void:
+    _set_item_list_enabled(equipment_list, enabled, _equipment_list_default_focus_mode, _equipment_list_default_mouse_filter)
+
+func _set_skill_list_enabled(enabled: bool) -> void:
+    _set_item_list_enabled(skill_list, enabled, _skill_list_default_focus_mode, _skill_list_default_mouse_filter)
+
+func _set_item_list_enabled(list: ItemList, enabled: bool, default_focus_mode: int, default_mouse_filter: int) -> void:
+    list.focus_mode = default_focus_mode if enabled else Control.FOCUS_NONE
+    list.mouse_filter = default_mouse_filter if enabled else Control.MOUSE_FILTER_IGNORE
