@@ -32,7 +32,7 @@ func _start_simulation() -> void:
     info_label.text = "\n".join(_battle_log)
     _apply_party_results(_simulation.get_party_snapshot())
     continue_button.disabled = false
-    continue_button.text = _battle_result.get("victory", false) ? tr("Collect Rewards") : tr("Continue")
+    continue_button.text = tr("Collect Rewards") if _battle_result.get("victory", false) else tr("Continue")
 
 func _apply_party_results(snapshot: Array[Dictionary]) -> void:
     for entry in snapshot:
