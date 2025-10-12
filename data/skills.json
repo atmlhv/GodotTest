@@ -1,0 +1,26 @@
+[
+  {
+    "id": "attack_basic",
+    "name": {
+      "en": "Attack",
+      "ja": "こうげき"
+    },
+    "type": "skill",
+    "element": "physical",
+    "power": 1.0,
+    "cost_mp": 0,
+    "target": "enemy_single"
+  },
+  {
+    "id": "fire_bolt",
+    "name": {
+      "en": "Fire Bolt",
+      "ja": "ファイアボルト"
+    },
+    "type": "spell",
+    "element": "fire",
+    "power": 1.2,
+    "cost_mp": 6,
+    "target": "enemy_single"
+  }
+]
