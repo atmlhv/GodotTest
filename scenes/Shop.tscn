@@ -17,20 +17,123 @@ anchor_right = 1.0
 
 [node name="VBox" type="VBoxContainer" parent="."]
 layout_mode = 1
-anchors_preset = 15
-anchor_left = 0.32
-anchor_right = 0.68
-anchor_top = 0.3
-anchor_bottom = 0.7
+anchors_preset = 0
+anchor_left = 0.2
+anchor_right = 0.8
+anchor_top = 0.18
+anchor_bottom = 0.95
 size_flags_horizontal = 4
 size_flags_vertical = 4
-alignment = 1
+alignment = 0
 
 [node name="InfoLabel" type="Label" parent="VBox"]
 layout_mode = 2
 size_flags_horizontal = 4
 horizontal_alignment = 1
-text = "Shop overview"
+text = "Shop"
+
+[node name="StatusLabel" type="Label" parent="VBox"]
+layout_mode = 2
+size_flags_horizontal = 4
+horizontal_alignment = 1
+text = ""
+
+[node name="SkillsSection" type="VBoxContainer" parent="VBox"]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_constants/separation = 4
+
+[node name="SkillLabel" type="Label" parent="VBox/SkillsSection"]
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Skills"
+
+[node name="SkillList" type="ItemList" parent="VBox/SkillsSection"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+auto_height = false
+
+[node name="SkillTarget" type="OptionButton" parent="VBox/SkillsSection"]
+layout_mode = 2
+size_flags_horizontal = 4
+
+[node name="SkillBuy" type="Button" parent="VBox/SkillsSection"]
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Buy Skill"
+
+[node name="EquipmentSection" type="VBoxContainer" parent="VBox"]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_constants/separation = 4
+
+[node name="EquipmentLabel" type="Label" parent="VBox/EquipmentSection"]
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Equipment"
+
+[node name="EquipmentList" type="ItemList" parent="VBox/EquipmentSection"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+auto_height = false
+
+[node name="EquipmentTarget" type="OptionButton" parent="VBox/EquipmentSection"]
+layout_mode = 2
+size_flags_horizontal = 4
+
+[node name="EquipmentBuy" type="Button" parent="VBox/EquipmentSection"]
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Buy Equipment"
+
+[node name="ItemsSection" type="VBoxContainer" parent="VBox"]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_constants/separation = 4
+
+[node name="ItemLabel" type="Label" parent="VBox/ItemsSection"]
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Items"
+
+[node name="ItemList" type="ItemList" parent="VBox/ItemsSection"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+auto_height = false
+
+[node name="ItemBuy" type="Button" parent="VBox/ItemsSection"]
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Buy Item"
+
+[node name="ItemStatus" type="Label" parent="VBox/ItemsSection"]
+layout_mode = 2
+size_flags_horizontal = 4
+horizontal_alignment = 1
+text = ""
+
+[node name="ReplaceRow" type="HBoxContainer" parent="VBox/ItemsSection"]
+layout_mode = 2
+size_flags_horizontal = 4
+alignment = 1
+visible = false
+
+[node name="ReplaceSelect" type="OptionButton" parent="VBox/ItemsSection/ReplaceRow"]
+layout_mode = 2
+size_flags_horizontal = 4
+
+[node name="ReplaceConfirm" type="Button" parent="VBox/ItemsSection/ReplaceRow"]
+layout_mode = 2
+size_flags_horizontal = 2
+text = "Replace"
+
+[node name="ReplaceCancel" type="Button" parent="VBox/ItemsSection/ReplaceRow"]
+layout_mode = 2
+size_flags_horizontal = 2
+text = "Cancel"
 
 [node name="ReturnButton" type="Button" parent="VBox"]
 layout_mode = 2
