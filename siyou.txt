@@ -1,0 +1,170 @@
+Godot 4.5 Project Specification (Final - 2025-10-12)
+
+[Summary]
+Single-player command RPG + roguelike (DQ6 x Slay the Spire structure).
+Target: Windows (1920x1080, 60fps). Engine: Godot 4.5 (GDScript).
+
+[Technical]
+- Engine: Godot 4.5 (GDScript only)
+- Platform: Windows only (macOS unsupported)
+- Resolution: 1920x1080, 60fps target
+- Language: Japanese + English (Noto Sans JP)
+- Save: 1 slot only (user://saves/slot1.json + .bak)
+- RNG: Seeded, deterministic with separated streams (map/ai/action/loot)
+- JSON data-driven (res://data/)
+
+[Game Overview]
+- Turn-based command RPG + roguelike
+- No field movement, only Battle / Reward / Map select
+- 3 Acts; clear all for victory
+- Ascension system for higher difficulty cycles
+
+[Core Loop]
+1. Select map node (Battle/Event/Shop/Rest/Elite/Boss)
+2. Battle (DQ6-like system)
+3. Gain rewards (3-choice + probabilistic drops)
+4. Level-up, learn skills
+5. Next node -> repeat until Act 3 Boss clear
+6. Unlock higher Ascension
+
+[Battle System]
+- Party: 4 frontline + 4 reserve (wagon system)
+- Enemies: up to 8
+- Turn order: Agility + random(0–10) + preemptive passive priority
+- Phases: Formation (wagon switch) -> Command select -> Execution -> End checks
+
+Commands:
+- Skill / Spell / Item / Guard
+- “Attack” is a Skill (0 MP, physical single-target)
+- Items: shared pool (max 3)
+- Guard: damage 0.5x this turn
+
+Damage:
+Physical:
+  base = max(1, (Atk*1.0 - Def*0.6))
+  damage = floor(base * element * skill_power * variance * crit * buffs)
+Magic:
+  base = MATK * skill_power
+  damage = floor(base * element * variance * crit * buffs)
+Crit: 1.5x chance=CR% (applies to physical & magic)
+Min damage = 1. Guard halves damage.
+
+[Status Effects]
+Only 3 types:
+- Poison: 5% max HP dmg end of turn (no stack, refresh duration)
+- Sleep: 2 turns, 50% wake chance on hit
+- Silence: disables Spells only (Skills usable)
+
+[Item System]
+- Shared inventory max 3 items
+- If full: modal “Replace / Discard / Cancel”
+- Item use = consumes turn; executes at action time
+- No preemptive healing before selection
+- If stock=0 at execution → fizzled action logged
+
+[Wagon Formation]
+- Change only during pre-turn Formation Phase
+- Once commands chosen, locked until next turn
+
+[Rewards]
+Guaranteed:
+  - Gold (fixed/variable per enemy)
+  - Equipment (3-choice, pick one, assign to character)
+Chance-based:
+  - Skill (p=0.35): if appears, 3-choice
+  - Item (p=0.40): if appears, 1 item auto-gained (respects 3-item cap)
+Special:
+  - Character join via Event only
+  - No reroll feature
+  - Duplicate equipment allowed (no weight penalty)
+
+[Enemy AI]
+- JSON rule table: condition + action + target
+- Default targeting: random among frontline
+- No healer-focus bias
+- Boss phase change triggers on HP threshold mid-turn
+
+[Stats]
+HP, MP, ATK, DEF, AGI, MATK, REC, CRIT%, CRITx
+Derived attributes: element multipliers (0.5–1.5x)
+Shared with enemies and allies.
+
+[Equipment]
+- 4 slots: Weapon / Head / Body / Accessory
+- May add passives (buffs, element bonuses, etc.)
+- Upgrade via smith: +1 only (10% boost)
+- No multi-level upgrades.
+
+[Map System]
+- DAG graph (10 columns, 7 rows)
+- Node types: Battle / Elite / Event / Shop / Rest / Boss
+- Last column: Boss fixed
+- Procedurally generated, ensures path connectivity
+
+[Shop]
+- Inventory: Skills(3), Equipment(3), Items(5)
+- Price formula = Base * Rarity * Act * Ascension
+- Buy = same logic as reward (choose target on Skill/Equip)
+
+[Rest Node]
+Options:
+1. Recover HP 30%
+2. Recover MP 30%
+3. Smith (+1 upgrade if unupgraded)
+
+[Ascension]
+- Levels 1–20, each adds difficulty (HP+, ATK+, shop↑, heal↓)
+- Unlock next after clear
+- Save highest reached Ascension
+
+[UI/UX]
+- Always-visible Party Panel (Battle & Map)
+  shows portrait, HP/MP bars, status icons, forge mark
+- Tooltip on hover for stats/equip/skills
+- Battle: DQ style (ally left, enemy right, bottom commands)
+- Map: StS-like DAG with node icons
+- Consistent top PartyPanel across all scenes
+
+[Singletons (/singletons)]
+- Game.gd (state machine)
+- Data.gd (JSON loader)
+- RNG.gd (multi-stream random)
+- Save.gd (slot1)
+- Audio.gd (BGM/SE)
+- Balance.gd (damage, constants, ascension mods)
+
+[Scenes (/scenes)]
+- Map.tscn, Combat.tscn, Reward.tscn, Shop.tscn, Rest.tscn, Title.tscn
+- Async load, fade transitions
+
+[Save]
+- Includes RNG seeds, counters, map state, party stats
+- Autosave after node move, pre/post battle, purchases
+- Backup slot1.json.bak
+
+[Testing Criteria]
+- 60fps with 8 enemies + 8 allies visible
+- Status effect behavior verified (3 types)
+- Wagon change only before commands
+- Item cap 3 enforced
+- Reward drops match rules
+- RNG reproducible with same seed
+- UI panel consistent across scenes
+- Save/load restores full run state
+
+[Default Values]
+p_skill_drop = 0.35
+p_item_drop = 0.40
+crit_rate = 0.05
+crit_mul = 1.5
+p_poison = 0.05
+sleep_turns = 2
+wake_chance = 0.5
+
+[Deliverables]
+- Project tree: /scenes /singletons /data /ui /audio /tests
+- Data-driven JSON as per schema examples
+- Balance.gd centralizes constants
+- Implement deterministic RNG & state save
+- All code in GDScript (Godot 4.5)
+- Full functionality per above specs
