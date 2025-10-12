@@ -1,0 +1,58 @@
+[
+  {
+    "id": "rusty_sword",
+    "slot": "weapon",
+    "name": {
+      "en": "Rusty Sword",
+      "ja": "さびたつるぎ"
+    },
+    "stats": {
+      "atk": 4
+    }
+  },
+  {
+    "id": "leather_armor",
+    "slot": "body",
+    "name": {
+      "en": "Leather Armor",
+      "ja": "かわのよろい"
+    },
+    "stats": {
+      "def": 3
+    }
+  },
+  {
+    "id": "apprentice_staff",
+    "slot": "weapon",
+    "name": {
+      "en": "Apprentice Staff",
+      "ja": "しょしんしゃのつえ"
+    },
+    "stats": {
+      "matk": 5
+    }
+  },
+  {
+    "id": "cloth_hat",
+    "slot": "head",
+    "name": {
+      "en": "Cloth Hat",
+      "ja": "ぬののぼうし"
+    },
+    "stats": {
+      "def": 1
+    }
+  },
+  {
+    "id": "robe",
+    "slot": "body",
+    "name": {
+      "en": "Robe",
+      "ja": "まほうつかいのローブ"
+    },
+    "stats": {
+      "def": 1,
+      "matk": 2
+    }
+  }
+]
