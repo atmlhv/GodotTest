@@ -32,7 +32,7 @@ func _start_simulation() -> void:
     info_label.text = "\n".join(_battle_log)
     _apply_party_results(_simulation.get_party_snapshot())
     continue_button.disabled = false
-    continue_button.text = _battle_result.get("victory", false) ? tr("Collect Rewards") : tr("Continue")
+    continue_button.text = tr("Collect Rewards") if _battle_result.get("victory", false) else tr("Continue")
 
 func _apply_party_results(snapshot: Array[Dictionary]) -> void:
     for entry in snapshot:
@@ -275,15 +275,15 @@ class BattleSimulation:
         var target_mode: String = str(skill.get("target", "enemy_single"))
         match target_mode:
             "ally_single":
-                var pool: Array[BattleEntity] = entity.is_enemy ? _live_enemies() : _live_allies()
+                var pool: Array[BattleEntity] = _live_enemies() if entity.is_enemy else _live_allies()
                 if pool.is_empty():
                     return null
                 return pool[0]
             _:
-                var opponents: Array[BattleEntity] = entity.is_enemy ? _live_allies() : _live_enemies()
+                var opponents: Array[BattleEntity] = _live_allies() if entity.is_enemy else _live_enemies()
                 if opponents.is_empty():
                     return null
-                var frontline := entity.is_enemy ? _live_frontline_allies() : _live_enemies()
+                var frontline := _live_frontline_allies() if entity.is_enemy else _live_enemies()
                 if entity.is_enemy and not frontline.is_empty():
                     opponents = frontline
                 var choice: BattleEntity = RNG.choice(RNG_STREAM_AI, opponents)
@@ -299,7 +299,7 @@ class BattleSimulation:
         var element_multiplier: float = 1.0
         var variance: float = RNG.randf_range(RNG_STREAM_ACTION, VARIANCE_MIN, VARIANCE_MAX)
         var has_crit: bool = _roll_crit(attacker)
-        var crit_multiplier: float = has_crit ? max(1.0, attacker.get_stat("critx")) : 1.0
+        var crit_multiplier: float = max(1.0, attacker.get_stat("critx")) if has_crit else 1.0
         var power: float = float(skill.get("power", 1.0))
         var buff_multiplier: float = 1.0
         var damage: int = 0
@@ -449,4 +449,3 @@ class BattleEntity:
 
     func roll_initiative() -> void:
         initiative = int(get_stat("agi")) + RNG.randi_range(RNG_STREAM_ACTION, 0, 10)
-*** End Patch
