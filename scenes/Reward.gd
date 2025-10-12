@@ -199,10 +199,10 @@ func _describe_inventory_entry(entry: Dictionary) -> String:
 func _is_reward_complete() -> bool:
     if reward_data.is_empty():
         return true
-    var claimed_gold := reward_data.get("claimed_gold", true)
-    var claimed_equipment := reward_data.get("claimed_equipment", true)
-    var claimed_skill := reward_data.get("claimed_skill", true)
-    var claimed_item := reward_data.get("claimed_item", true)
+    var claimed_gold: bool = bool(reward_data.get("claimed_gold", true))
+    var claimed_equipment: bool = bool(reward_data.get("claimed_equipment", true))
+    var claimed_skill: bool = bool(reward_data.get("claimed_skill", true))
+    var claimed_item: bool = bool(reward_data.get("claimed_item", true))
     return claimed_gold and claimed_equipment and claimed_skill and claimed_item
 
 func _on_claim_gold_pressed() -> void:
