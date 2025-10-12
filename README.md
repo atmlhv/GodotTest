@@ -3,22 +3,27 @@
 This repository contains a Godot 4.5 project skeleton that follows the high-level specification for a command-based roguelike RPG. The initial commit focuses on establishing project structure, core singletons, deterministic RNG scaffolding, save system plumbing, and placeholder scenes with a shared party panel UI.
 
 ## Directory Layout
-- `scenes/` – Placeholder scenes for Title, Map, Combat, Reward, Shop, and Rest.
+- `scenes/` – Playable scenes for Title, Map, Combat, Reward, Shop, and Rest.
 - `singletons/` – Autoload scripts for game state, data loading, RNG, saving, audio, and balance calculations.
 - `data/` – JSON datasets driving starter party members, skills, equipment, and ascension modifiers.
 - `ui/` – Shared UI scenes and scripts, including the persistent party panel.
 - `audio/` – Reserved for future audio assets.
 - `tests/` – Placeholder for automated test scripts.
 
+## Current Prototype Functionality
+- **Title → Map flow**: Press **New Run** to seed deterministic RNG streams, generate an act map (10×7 DAG), and transition to the Map scene automatically.
+- **Procedural map**: Each column of the act map contains selectable node buttons (Battle/Event/Shop/Rest/Elite) with deterministic connections leading to the Act boss.
+- **Scene transitions**: Selecting a node routes to the appropriate placeholder scene (Combat/Reward/Shop/Rest) and returning completes the node, unlocking the next column. Boss clears advance to the next act until Act 3 victory returns to the Title screen.
+- **Rewards preview**: The Reward scene pulls three equipment samples from `data/equipment.json` using the loot RNG stream and displays drop rate reminders from `Balance.gd` defaults.
+
 ## Getting Started
 1. Open the project in Godot 4.5 or later.
 2. Review `project.godot` autoload settings to ensure singletons load correctly.
-3. Run the project to load the Title screen. Starting a new run seeds the RNG and populates placeholder UI elements.
+3. Run the project and press **New Run** to see the generated map. Select nodes to move through the placeholder combat/reward/shop/rest loop and verify save/autosave hand-off.
 
 ## Next Steps
-- Implement the procedural map generator and node interactions.
-- Build out the combat system using the balance helpers and data-driven skills.
-- Flesh out reward, shop, and rest logic using the JSON datasets.
+- Expand combat resolution, including turn order, skill targeting, and deterministic damage using `Balance.gd` helpers.
+- Replace placeholder Reward/Shop/Rest logic with full inventory, equipment assignment, and resource updates.
 - Add comprehensive tests under `tests/` to verify deterministic behavior and save/load integrity.
 
 ## Contribution Tips

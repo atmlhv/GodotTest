@@ -15,12 +15,45 @@ layout_mode = 1
 anchors_preset = 0
 anchor_right = 1.0
 
-[node name="Label" type="Label" parent="."]
+[node name="MapContainer" type="MarginContainer" parent="."]
 layout_mode = 1
-anchors_preset = 15
-anchor_left = 0.4
-anchor_right = 0.6
-anchor_top = 0.45
-anchor_bottom = 0.55
+anchors_preset = 0
+anchor_left = 0.05
+anchor_top = 0.18
+anchor_right = 0.95
+anchor_bottom = 0.95
+size_flags_horizontal = 4
+size_flags_vertical = 4
+
+[node name="VBox" type="VBoxContainer" parent="MapContainer"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+alignment = 1
+custom_minimum_size = Vector2(0, 600)
+
+[node name="ActLabel" type="Label" parent="MapContainer/VBox"]
+layout_mode = 2
+size_flags_horizontal = 4
 horizontal_alignment = 1
-text = "Map prototype"
+text = "Act 1"
+
+[node name="InstructionsLabel" type="Label" parent="MapContainer/VBox"]
+layout_mode = 2
+size_flags_horizontal = 4
+horizontal_alignment = 1
+text = "Select a node"
+
+[node name="MapGrid" type="GridContainer" parent="MapContainer/VBox"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+columns = 10
+theme_override_constants/vseparation = 12
+theme_override_constants/hseparation = 12
+
+[node name="InfoLabel" type="Label" parent="MapContainer/VBox"]
+layout_mode = 2
+size_flags_horizontal = 4
+horizontal_alignment = 1
+text = "Choose a path"

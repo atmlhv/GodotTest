@@ -18,20 +18,13 @@ func _on_start_pressed() -> void:
     var seed_text: String = seed_line.text.strip_edges()
     var seed: int = seed_text.hash() if seed_text != "" else int(Time.get_unix_time_from_system())
     Game.new_run(seed, ascension_level)
-    Game.set_state(Game.GameState.MAP)
     _update_continue_button_state()
-    _show_feedback("New run started with seed %d" % seed)
 
 func _on_continue_pressed() -> void:
     Save.load_run()
-    Game.set_state(Game.GameState.MAP)
-    _show_feedback("Save loaded")
 
 func _on_run_loaded(_snapshot: Dictionary) -> void:
     _update_continue_button_state()
 
 func _update_continue_button_state() -> void:
     continue_button.disabled = not Save.has_saved_run()
-
-func _show_feedback(text: String) -> void:
-    OS.alert(text, "Info")

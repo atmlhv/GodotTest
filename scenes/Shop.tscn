@@ -15,12 +15,24 @@ layout_mode = 1
 anchors_preset = 0
 anchor_right = 1.0
 
-[node name="Label" type="Label" parent="."]
+[node name="VBox" type="VBoxContainer" parent="."]
 layout_mode = 1
 anchors_preset = 15
-anchor_left = 0.35
-anchor_right = 0.65
-anchor_top = 0.4
-anchor_bottom = 0.6
+anchor_left = 0.32
+anchor_right = 0.68
+anchor_top = 0.3
+anchor_bottom = 0.7
+size_flags_horizontal = 4
+size_flags_vertical = 4
+alignment = 1
+
+[node name="InfoLabel" type="Label" parent="VBox"]
+layout_mode = 2
+size_flags_horizontal = 4
 horizontal_alignment = 1
-text = "Shop prototype"
+text = "Shop overview"
+
+[node name="ReturnButton" type="Button" parent="VBox"]
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Leave Shop"
