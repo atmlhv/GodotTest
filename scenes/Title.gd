@@ -13,10 +13,10 @@ func _ready() -> void:
     _update_continue_button_state()
 
 func _on_start_pressed() -> void:
-    var ascension_level := int(ascension_spin.value)
+    var ascension_level: int = int(ascension_spin.value)
     Game.set_ascension_level(ascension_level)
-    var seed_text := seed_line.text.strip_edges()
-    var seed := seed_text.hash() if seed_text != "" else int(Time.get_unix_time_from_system())
+    var seed_text: String = seed_line.text.strip_edges()
+    var seed: int = seed_text.hash() if seed_text != "" else int(Time.get_unix_time_from_system())
     Game.new_run(seed, ascension_level)
     Game.set_state(Game.GameState.MAP)
     _update_continue_button_state()

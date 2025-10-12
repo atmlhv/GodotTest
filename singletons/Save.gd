@@ -7,14 +7,14 @@ const SAVE_PATH := SAVE_DIR + "/slot1.json"
 const BACKUP_PATH := SAVE_PATH + ".bak"
 
 var _pending_save: bool = false
-var _last_snapshot: Dictionary = {}
+var _last_snapshot: Dictionary = Dictionary()
 
 func _ready() -> void:
     DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(SAVE_DIR))
     load_run()
 
 func load_run() -> void:
-    var snapshot := _read_snapshot()
+    var snapshot: Dictionary = _read_snapshot()
     if snapshot.is_empty():
         return
     _last_snapshot = snapshot
@@ -36,7 +36,7 @@ func autosave_debounced() -> void:
 
 func _flush_save() -> void:
     _pending_save = false
-    var snapshot := Game.snapshot_for_save()
+    var snapshot: Dictionary = Game.snapshot_for_save()
     _last_snapshot = snapshot
     _write_snapshot(snapshot)
 
@@ -53,18 +53,22 @@ func get_cached_snapshot() -> Dictionary:
 
 func _read_snapshot() -> Dictionary:
     if not FileAccess.file_exists(SAVE_PATH):
-        return {}
+        return Dictionary()
     var file := FileAccess.open(SAVE_PATH, FileAccess.READ)
     if file == null:
-        return {}
+        return Dictionary()
     var content := file.get_as_text()
     file.close()
     var parser := JSON.new()
     var result := parser.parse(content)
     if result != OK:
         push_error("Failed to parse save file: %s" % parser.get_error_message())
-        return {}
-    return parser.data
+        return Dictionary()
+    var data: Variant = parser.data
+    if data is Dictionary:
+        return data
+    push_warning("Save data was not a dictionary; resetting state")
+    return Dictionary()
 
 func _write_snapshot(snapshot: Dictionary) -> void:
     var json := JSON.stringify(snapshot, "  ")

@@ -1,5 +1,7 @@
 [gd_scene load_steps=2 format=3 uid="uid://party_panel"]
 
+[ext_resource type="Script" path="res://ui/PartyPanel.gd" id="1"]
+
 [node name="PartyPanel" type="Control"]
 layout_mode = 3
 anchors_preset = 0
@@ -8,7 +10,7 @@ custom_minimum_size = Vector2(0, 160)
 pivot_offset = Vector2(0, 0)
 size_flags_horizontal = 3
 size_flags_vertical = 0
-script = ExtResource("res://ui/PartyPanel.gd")
+script = ExtResource("1")
 
 [node name="Background" type="ColorRect" parent="."]
 layout_mode = 0

@@ -20,3 +20,6 @@ This repository contains a Godot 4.5 project skeleton that follows the high-leve
 - Build out the combat system using the balance helpers and data-driven skills.
 - Flesh out reward, shop, and rest logic using the JSON datasets.
 - Add comprehensive tests under `tests/` to verify deterministic behavior and save/load integrity.
+
+## Contribution Tips
+- プルリクエスト作成前に `CONTRIBUTING.md` を参照し、`main` ブランチとのコンフリクトを解消してからプッシュしてください。

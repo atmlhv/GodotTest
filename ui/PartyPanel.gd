@@ -9,7 +9,7 @@ func _ready() -> void:
     Game.ascension_updated.connect(_on_ascension_updated)
 
 func _refresh_panel() -> void:
-    var lines: Array[String] = []
+    var lines: Array[String] = Array[String]()
     for member_data in Game.get_party_overview():
         lines.append(_format_member_line(member_data))
     if lines.is_empty():
@@ -26,6 +26,6 @@ func _format_member_line(member_data: Dictionary) -> String:
     var max_hp: int = member_data.get("max_hp", hp)
     var mp: int = member_data.get("mp", 0)
     var max_mp: int = member_data.get("max_mp", mp)
-    var status: Array = member_data.get("status", [])
-    var status_text := "" if status.is_empty() else " [" + ", ".join(status) + "]"
+    var status: Array = member_data.get("status", Array())
+    var status_text: String = "" if status.is_empty() else " [" + ", ".join(status) + "]"
     return "%s HP %d/%d MP %d/%d%s" % [name, hp, max_hp, mp, max_mp, status_text]
