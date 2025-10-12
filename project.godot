@@ -1,0 +1,42 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:  https://docs.godotengine.org/en/latest/tutorials/io/config_files.html#config-files
+
+config_version=5
+
+[application]
+config/name="CommandRogueRPG"
+run/main_scene="res://scenes/Title.tscn"
+config/features=PackedStringArray("4.5")
+
+[autoload]
+Audio="*res://singletons/Audio.gd"
+Balance="*res://singletons/Balance.gd"
+Data="*res://singletons/Data.gd"
+Game="*res://singletons/Game.gd"
+RNG="*res://singletons/RNG.gd"
+Save="*res://singletons/Save.gd"
+
+[display]
+window/size/width=1920
+window/size/height=1080
+window/size/test_width=1280
+window/size/test_height=720
+window/stretch/mode="canvas_items"
+window/stretch/aspect="keep"
+
+[editor]
+export/cli=false
+
+[input]
+ui_accept={"deadzone":0.5,"events":[{"type":"key","keycode":4194309,"physical_keycode":4194309,"unicode":0,"echo":false,"press":true}]}
+ui_cancel={"deadzone":0.5,"events":[{"type":"key","keycode":4194311,"physical_keycode":4194311,"unicode":0,"echo":false,"press":true}]}
+
+[locale]
+locale_filter_enabled=true
+locale_filters=PackedStringArray("ja","en")
+
+[rendering]
+renderer/rendering_method="forward_plus"
