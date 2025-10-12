@@ -449,4 +449,3 @@ class BattleEntity:
 
     func roll_initiative() -> void:
         initiative = int(get_stat("agi")) + RNG.randi_range(RNG_STREAM_ACTION, 0, 10)
-*** End Patch
