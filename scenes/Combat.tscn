@@ -47,8 +47,115 @@ theme_override_constants/separation = 24
 [node name="Heading" type="Label" parent="RootLayout/BodyMargin/Panel/VBox"]
 layout_mode = 2
 size_flags_horizontal = 4
-text = "Battle Report"
+text = "Battle"
 horizontal_alignment = 1
+
+[node name="ArenaRow" type="HBoxContainer" parent="RootLayout/BodyMargin/Panel/VBox"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 2
+theme_override_constants/separation = 48
+
+[node name="AlliesPanel" type="VBoxContainer" parent="RootLayout/BodyMargin/Panel/VBox/ArenaRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+theme_override_constants/separation = 12
+
+[node name="AlliesHeader" type="Label" parent="RootLayout/BodyMargin/Panel/VBox/ArenaRow/AlliesPanel"]
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Allies"
+
+[node name="AlliesList" type="VBoxContainer" parent="RootLayout/BodyMargin/Panel/VBox/ArenaRow/AlliesPanel"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+theme_override_constants/separation = 6
+
+[node name="EnemiesPanel" type="VBoxContainer" parent="RootLayout/BodyMargin/Panel/VBox/ArenaRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+theme_override_constants/separation = 12
+
+[node name="EnemiesHeader" type="Label" parent="RootLayout/BodyMargin/Panel/VBox/ArenaRow/EnemiesPanel"]
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Enemies"
+
+[node name="EnemiesList" type="VBoxContainer" parent="RootLayout/BodyMargin/Panel/VBox/ArenaRow/EnemiesPanel"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+theme_override_constants/separation = 6
+
+[node name="PhaseLabel" type="Label" parent="RootLayout/BodyMargin/Panel/VBox"]
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Prepare for battle"
+autowrap_mode = 3
+
+[node name="CommandPanel" type="VBoxContainer" parent="RootLayout/BodyMargin/Panel/VBox"]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_constants/separation = 12
+
+[node name="CommandButtons" type="HBoxContainer" parent="RootLayout/BodyMargin/Panel/VBox/CommandPanel"]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_constants/separation = 12
+
+[node name="AttackButton" type="Button" parent="RootLayout/BodyMargin/Panel/VBox/CommandPanel/CommandButtons"]
+layout_mode = 2
+size_flags_horizontal = 2
+text = "Attack"
+
+[node name="SkillButton" type="Button" parent="RootLayout/BodyMargin/Panel/VBox/CommandPanel/CommandButtons"]
+layout_mode = 2
+size_flags_horizontal = 2
+text = "Skill"
+
+[node name="SpellButton" type="Button" parent="RootLayout/BodyMargin/Panel/VBox/CommandPanel/CommandButtons"]
+layout_mode = 2
+size_flags_horizontal = 2
+text = "Spell"
+
+[node name="ItemButton" type="Button" parent="RootLayout/BodyMargin/Panel/VBox/CommandPanel/CommandButtons"]
+layout_mode = 2
+size_flags_horizontal = 2
+text = "Item"
+
+[node name="GuardButton" type="Button" parent="RootLayout/BodyMargin/Panel/VBox/CommandPanel/CommandButtons"]
+layout_mode = 2
+size_flags_horizontal = 2
+text = "Guard"
+
+[node name="OptionsScroll" type="ScrollContainer" parent="RootLayout/BodyMargin/Panel/VBox/CommandPanel"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 2
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 2
+
+[node name="OptionsList" type="VBoxContainer" parent="RootLayout/BodyMargin/Panel/VBox/CommandPanel/OptionsScroll"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+theme_override_constants/separation = 6
+
+[node name="TargetScroll" type="ScrollContainer" parent="RootLayout/BodyMargin/Panel/VBox/CommandPanel"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 2
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 2
+
+[node name="TargetList" type="VBoxContainer" parent="RootLayout/BodyMargin/Panel/VBox/CommandPanel/TargetScroll"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+theme_override_constants/separation = 6
 
 [node name="LogScroll" type="ScrollContainer" parent="RootLayout/BodyMargin/Panel/VBox"]
 layout_mode = 2
