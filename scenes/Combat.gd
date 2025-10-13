@@ -7,20 +7,43 @@ const RNG_STREAM_AI := "ai"
 const VARIANCE_MIN: float = 0.9
 const VARIANCE_MAX: float = 1.1
 
-@onready var info_label: Label = $VBox/InfoLabel
-@onready var continue_button: Button = $VBox/CompleteButton
+const INFO_LABEL_PATH: NodePath = NodePath("RootLayout/BodyMargin/Panel/VBox/LogScroll/InfoLabel")
+const CONTINUE_BUTTON_PATH: NodePath = NodePath("RootLayout/BodyMargin/Panel/VBox/ButtonRow/CompleteButton")
+const LOG_SCROLL_PATH: NodePath = NodePath("RootLayout/BodyMargin/Panel/VBox/LogScroll")
+
+var info_label: Label
+var continue_button: Button
+var log_scroll: ScrollContainer
 
 var _battle_log: Array[String] = []
 var _simulation: BattleSimulation
 var _battle_result: Dictionary = {}
 
 func _ready() -> void:
-    continue_button.disabled = true
-    continue_button.pressed.connect(_on_complete_pressed)
-    info_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-    info_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-    info_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    _cache_ui_nodes()
+    _initialize_ui()
     _start_simulation()
+
+func _cache_ui_nodes() -> void:
+    info_label = get_node_or_null(INFO_LABEL_PATH) as Label
+    if info_label == null:
+        push_error("Combat scene is missing the info label at %s" % INFO_LABEL_PATH)
+    log_scroll = get_node_or_null(LOG_SCROLL_PATH) as ScrollContainer
+    if log_scroll == null:
+        push_error("Combat scene is missing the log scroll container at %s" % LOG_SCROLL_PATH)
+    continue_button = get_node_or_null(CONTINUE_BUTTON_PATH) as Button
+    if continue_button == null:
+        push_error("Combat scene is missing the continue button at %s" % CONTINUE_BUTTON_PATH)
+
+func _initialize_ui() -> void:
+    if continue_button != null:
+        continue_button.disabled = true
+        continue_button.pressed.connect(_on_complete_pressed)
+    if info_label != null:
+        info_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+        info_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+        info_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        info_label.text = tr("Encounter pending")
 
 func _start_simulation() -> void:
     var party_overview: Array[Dictionary] = Game.get_party_overview()
@@ -29,10 +52,21 @@ func _start_simulation() -> void:
     _simulation.run()
     _battle_log = _simulation.get_log()
     _battle_result = _simulation.get_result()
-    info_label.text = "\n".join(_battle_log)
+    if info_label != null:
+        info_label.text = "\n".join(_battle_log)
+        _scroll_log_to_bottom()
     _apply_party_results(_simulation.get_party_snapshot())
-    continue_button.disabled = false
-    continue_button.text = tr("Collect Rewards") if _battle_result.get("victory", false) else tr("Continue")
+    if continue_button != null:
+        continue_button.disabled = false
+        continue_button.text = tr("Collect Rewards") if _battle_result.get("victory", false) else tr("Continue")
+
+func _scroll_log_to_bottom() -> void:
+    if log_scroll == null:
+        return
+    var vbar := log_scroll.get_v_scroll_bar()
+    if vbar == null:
+        return
+    log_scroll.call_deferred("set", "scroll_vertical", int(vbar.max_value))
 
 func _apply_party_results(snapshot: Array[Dictionary]) -> void:
     for entry in snapshot:
