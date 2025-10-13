@@ -143,7 +143,7 @@ func _initialize_battle() -> void:
 	_pending_commands.clear()
 	_current_actor = null
 	_formation_selection = null
-       _cancel_target_callback = Callable()
+	_cancel_target_callback = Callable()
 	_battle_result = {}
 	_encounter_resolved = false
 	_turn_counter = 0
@@ -387,10 +387,10 @@ func _clear_options() -> void:
 		options_scroll.visible = false
 
 func _clear_targets() -> void:
-       _clear_target_buttons()
-       if target_scroll != null:
-               target_scroll.visible = false
-       _cancel_target_callback = Callable()
+	_clear_target_buttons()
+	if target_scroll != null:
+		target_scroll.visible = false
+	_cancel_target_callback = Callable()
 
 func _clear_target_buttons() -> void:
 	if target_list == null:

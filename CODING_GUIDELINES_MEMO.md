@@ -5,6 +5,7 @@
 - **インデントは既存ファイルのスタイルに合わせる**
   - GDScript ファイルではタブとスペースが混在すると `Parse Error: Used space character for indentation instead of tab` が発生します。
   - 既存コードがタブでインデントされている場合は必ずタブを使用し、スペースと混在させないでください。
+  - 例: `scenes/Combat.gd` の `_initialize_battle()` 内でスペースを混ぜた結果、`Mixed use of tabs and spaces for indentation.` が出力されました。
 - **三項演算子の代わりに `if ... else` 構文を使う**
   - Godot 4 の GDScript では `condition ? a : b` 形式はサポートされません。
   - 代わりに `a if condition else b` を使用しないと `Parse Error: Unexpected "?" in source` が発生します。
