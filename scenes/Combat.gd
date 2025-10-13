@@ -455,10 +455,14 @@ func _show_target_options(buttons: Array[Dictionary], label: String, cancelable:
 func _on_target_button_pressed(button: Button) -> void:
 	if button == null:
 		return
+	if not button.has_meta(TARGET_PAYLOAD_META):
+		return
 	var payload_variant: Variant = button.get_meta(TARGET_PAYLOAD_META)
-	if not (payload_variant is Dictionary):
+	if typeof(payload_variant) != TYPE_DICTIONARY:
 		return
 	var payload: Dictionary = payload_variant
+	if payload.is_empty():
+		return
 	var mode: String = str(payload.get("mode", ""))
 	match mode:
 		"skill":
@@ -470,30 +474,42 @@ func _on_target_button_pressed(button: Button) -> void:
 
 func _handle_skill_target_payload(payload: Dictionary) -> void:
 	var target_variant: Variant = payload.get("target")
-	if not (target_variant is BattleEntity):
+	if target_variant == null:
+		return
+	var target := target_variant as BattleEntity
+	if target == null or not target.is_alive():
 		return
 	var actor_variant: Variant = payload.get("actor")
-	if not (actor_variant is BattleEntity):
+	if actor_variant == null:
+		return
+	var actor := actor_variant as BattleEntity
+	if actor == null or not actor.is_alive():
 		return
 	var skill_variant: Variant = payload.get("skill")
 	var skill_dict: Dictionary = {}
-	if skill_variant is Dictionary:
+	if typeof(skill_variant) == TYPE_DICTIONARY:
 		skill_dict = skill_variant
-	_on_skill_target_selected(target_variant, actor_variant, skill_dict)
+	_on_skill_target_selected(target, actor, skill_dict)
 
 func _handle_item_target_payload(payload: Dictionary) -> void:
 	var target_variant: Variant = payload.get("target")
-	if not (target_variant is BattleEntity):
+	if target_variant == null:
+		return
+	var target := target_variant as BattleEntity
+	if target == null:
 		return
 	var actor_variant: Variant = payload.get("actor")
-	if not (actor_variant is BattleEntity):
+	if actor_variant == null:
+		return
+	var actor := actor_variant as BattleEntity
+	if actor == null or not actor.is_alive():
 		return
 	var slot_index: int = int(payload.get("slot_index", -1))
 	var item_variant: Variant = payload.get("item_data")
 	var item_dict: Dictionary = {}
-	if item_variant is Dictionary:
+	if typeof(item_variant) == TYPE_DICTIONARY:
 		item_dict = item_variant
-	_on_item_target_selected(target_variant, actor_variant, slot_index, item_dict)
+	_on_item_target_selected(target, actor, slot_index, item_dict)
 
 func _cancel_target_selection() -> void:
 	_clear_targets()

@@ -27,6 +27,7 @@
   - 以前は `button.set_meta("target_callback", callable)` で `Callable` を保存していましたが、Godot 4.5 では押下時に `callable.is_valid()` が `false` へ変化し、攻撃対象を選択できない不具合が再発しました。
   - ターゲットボタンを生成する際は `{ "mode": "skill", "target": target, "actor": actor }` などの辞書を `button.set_meta("target_payload", payload)` で保持し、`_on_target_button_pressed()` から種別ごとの処理関数を呼び出してください。
   - メタデータに必要な情報を残しておけば UI の再描画や `_clear_targets()` 実行後でも選択内容が失われず、攻撃・アイテムともにターゲット決定が確実に機能します。
+  - `BattleEntity` インスタンスをメタデータから取得した際に `payload.get("target") is BattleEntity` の判定が `false` になり、ターゲット決定が行われない事例がありました（Godot が `RefCounted` として返すため）。`as BattleEntity` でキャストした結果が `null` でないこと、`is_alive()` で有効なことを確認してから処理を進めてください。
 - **シグナル接続で引数を束縛するときは `Callable` を明示する**
   - `button.pressed.connect(_on_pressed.bind(arg))` のようにメソッド参照を直接 `bind` するとコネクションが無効になり、ボタンを押しても何も起きませんでした。
   - 必ず `button.pressed.connect(Callable(self, "_on_pressed").bind(arg))` の形式で `Callable` を生成してから `bind` を使用してください。
