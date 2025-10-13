@@ -502,28 +502,31 @@ func _handle_item_target_payload(payload: Dictionary) -> void:
 func _resolve_payload_entity(payload: Dictionary, key: String) -> BattleEntity:
 	if payload.is_empty():
 		return null
-	var value: Variant = payload.get(key)
-	if value == null:
-		return null
-	if value is BattleEntity:
-		return value
-	if value is WeakRef:
-		var weak: WeakRef = value
-		var referenced: Object = weak.get_ref()
-		if referenced is BattleEntity:
-			return referenced
-		if referenced is Object:
-			var instance_object: Object = referenced
-			var candidate: BattleEntity = _resolve_entity_by_instance_id(instance_object.get_instance_id())
-			if candidate != null:
-				return candidate
-		return null
-	if value is RefCounted:
-		var refcounted: RefCounted = value
-		var candidate_from_ref: BattleEntity = _resolve_entity_by_instance_id(refcounted.get_instance_id())
-		if candidate_from_ref != null:
-			return candidate_from_ref
-	var instance_id: int = int(payload.get("%s_instance_id" % key, 0))
+	if payload.has(key):
+		var value: Variant = payload.get(key)
+		if value is BattleEntity:
+			return value
+		if value is WeakRef:
+			var weak: WeakRef = value
+			var referenced: Object = weak.get_ref()
+			if referenced is BattleEntity:
+				return referenced
+			if referenced is RefCounted:
+				var candidate_from_ref: BattleEntity = referenced as BattleEntity
+				if candidate_from_ref != null:
+					return candidate_from_ref
+		if value is RefCounted:
+			var ref_candidate: BattleEntity = value as BattleEntity
+			if ref_candidate != null:
+				return ref_candidate
+	var uid_key: String = "%s_uid" % key
+	var uid: int = int(payload.get(uid_key, 0))
+	if uid != 0:
+		var resolved: BattleEntity = _resolve_entity_by_uid(uid)
+		if resolved != null:
+			return resolved
+	var instance_key: String = "%s_instance_id" % key
+	var instance_id: int = int(payload.get(instance_key, 0))
 	if instance_id != 0:
 		return _resolve_entity_by_instance_id(instance_id)
 	return null
@@ -531,23 +534,24 @@ func _resolve_payload_entity(payload: Dictionary, key: String) -> BattleEntity:
 func _build_skill_target_payload(actor: BattleEntity, target: BattleEntity, skill: Dictionary) -> Dictionary:
 	return {
 		"mode": "skill",
-		"target": target,
-		"target_instance_id": target.get_instance_id(),
-		"actor": actor,
-		"actor_instance_id": actor.get_instance_id(),
+		"target_uid": target.uid,
+		"actor_uid": actor.uid,
 		"skill": skill.duplicate(true),
 	}
 
 func _build_item_target_payload(actor: BattleEntity, target: BattleEntity, slot_index: int, item_data: Dictionary) -> Dictionary:
 	return {
 		"mode": "item",
-		"target": target,
-		"target_instance_id": target.get_instance_id(),
-		"actor": actor,
-		"actor_instance_id": actor.get_instance_id(),
+		"target_uid": target.uid,
+		"actor_uid": actor.uid,
 		"slot_index": slot_index,
 		"item_data": item_data.duplicate(true),
 	}
+
+func _resolve_entity_by_uid(uid: int) -> BattleEntity:
+	if uid == 0 or _battle == null:
+		return null
+	return _battle.get_entity_by_uid(uid)
 
 func _resolve_entity_by_instance_id(instance_id: int) -> BattleEntity:
 	if instance_id == 0 or _battle == null:
@@ -1190,11 +1194,19 @@ class BattleController:
 	var allies: Array[BattleEntity] = []
 	var enemies: Array[BattleEntity] = []
 	var max_frontline: int
+	var _entity_lookup: Dictionary = {}
 
 	func _init(party_payload: Array[Dictionary], enemy_payload: Array[Dictionary], frontline_size: int) -> void:
 		max_frontline = frontline_size
+		_entity_lookup.clear()
+		BattleEntity.reset_uid_counter()
 		_build_allies(party_payload)
 		_build_enemies(enemy_payload)
+
+	func _register_entity(entity: BattleEntity) -> void:
+		if entity == null:
+			return
+		_entity_lookup[entity.uid] = entity
 
 	func _build_allies(party_payload: Array[Dictionary]) -> void:
 		for i in range(party_payload.size()):
@@ -1202,6 +1214,7 @@ class BattleController:
 			var frontline: bool = i < max_frontline
 			var entity := BattleEntity.new(member, false, i, frontline)
 			allies.append(entity)
+			_register_entity(entity)
 
 	func _build_enemies(enemy_payload: Array[Dictionary]) -> void:
 		var capped_payload: Array[Dictionary] = []
@@ -1224,12 +1237,16 @@ class BattleController:
 		for definition in capped_payload:
 			var entity := BattleEntity.new(definition, true, -1, true)
 			enemies.append(entity)
+			_register_entity(entity)
 
 	func get_all_allies() -> Array[BattleEntity]:
 		return allies
 
 	func get_all_enemies() -> Array[BattleEntity]:
 		return enemies
+
+	func get_entity_by_uid(uid: int) -> BattleEntity:
+		return _entity_lookup.get(uid, null)
 
 	func get_frontline_allies() -> Array[BattleEntity]:
 		var result: Array[BattleEntity] = []
@@ -1349,10 +1366,12 @@ class BattleController:
 		return true
 
 class BattleEntity:
+	static var _next_uid: int = 1
 	var index: int
 	var name: String
 	var is_enemy: bool
 	var frontline: bool
+	var uid: int = 0
 	var hp: int
 	var max_hp: int
 	var mp: int
@@ -1363,10 +1382,19 @@ class BattleEntity:
 	var guard_active: bool = false
 	var initiative: int = 0
 
+	static func reset_uid_counter() -> void:
+		_next_uid = 1
+
+	static func _allocate_uid() -> int:
+		var value: int = _next_uid
+		_next_uid += 1
+		return value
+
 	func _init(payload: Dictionary, enemy: bool, party_index: int, frontline_member: bool) -> void:
 		index = party_index
 		is_enemy = enemy
 		frontline = frontline_member
+		uid = _allocate_uid()
 		name = str(payload.get("name", payload.get("id", "Unknown")))
 		max_hp = int(payload.get("max_hp", payload.get("hp", 1)))
 		hp = clampi(int(payload.get("hp", max_hp)), 0, max_hp)
