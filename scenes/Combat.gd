@@ -340,8 +340,8 @@ func _populate_entity_list(container: VBoxContainer, entities: Array[BattleEntit
 		button.disabled = not entity.is_alive()
 		button.focus_mode = Control.FOCUS_NONE
 		button.set_meta("entity", entity)
-		if is_ally:
-			button.pressed.connect(_on_ally_entry_pressed.bind(button))
+                if is_ally:
+                        button.pressed.connect(Callable(self, "_on_ally_entry_pressed").bind(button))
 		container.add_child(button)
 
 func _format_entity_text(entity: BattleEntity, is_ally: bool) -> String:
@@ -430,19 +430,19 @@ func _show_target_options(targets: Array[BattleEntity], label: String, cancelabl
 	target_scroll.visible = true
 	if phase_label != null:
 		phase_label.text = label
-	for target in targets:
-		var button := Button.new()
-		button.text = "%s (%d/%d HP)" % [target.name, target.hp, target.max_hp]
-		button.disabled = not target.is_alive()
-		button.focus_mode = Control.FOCUS_NONE
-		button.pressed.connect(_on_target_button_pressed.bind(target))
-		target_list.add_child(button)
-	if cancelable:
-		var cancel_button := Button.new()
-		cancel_button.text = tr("Cancel")
-		cancel_button.focus_mode = Control.FOCUS_NONE
-		cancel_button.pressed.connect(_cancel_target_selection)
-		target_list.add_child(cancel_button)
+        for target in targets:
+                var button := Button.new()
+                button.text = "%s (%d/%d HP)" % [target.name, target.hp, target.max_hp]
+                button.disabled = not target.is_alive()
+                button.focus_mode = Control.FOCUS_NONE
+                button.pressed.connect(Callable(self, "_on_target_button_pressed").bind(target))
+                target_list.add_child(button)
+        if cancelable:
+                var cancel_button := Button.new()
+                cancel_button.text = tr("Cancel")
+                cancel_button.focus_mode = Control.FOCUS_NONE
+                cancel_button.pressed.connect(Callable(self, "_cancel_target_selection"))
+                target_list.add_child(cancel_button)
 
 func _on_target_button_pressed(target: BattleEntity) -> void:
 	if target == null:
