@@ -22,13 +22,11 @@
   - `Data.get_skill_by_id()` などのデータ取得系関数は、JSON のロードが完了する前に呼び出すと空の辞書を返します。
   - その状態で攻撃コマンドを生成すると「有効なスキルがない」と判定され、行動を選択できなくなります。
   - バトル開始前に `Data.data_loaded` を待つか、フォールバックデータを用意して例外を回避してください。
-- **ターゲット選択 UI のボタンには実行用コールバックを直接接続する**
-  - `_clear_targets()` のタイミングで `_target_callback` をクリアしてしまう実装だと、攻撃対象の一覧を開いた直後にコールバックが無効化され、ボタンを押してもコマンドが確定しない不具合が発生しました。
-  - ターゲット一覧を構築する際は `Callable(self, "_on_skill_target_selected").bind(...)` のように、その場で引数付きの `Callable` を生成して `button.pressed.connect` に渡してください。グローバル変数に格納したコールバックへ委譲すると再描画時に失われます。
-  - `Callable` を別の `Callable` の引数としてバインドすると `is_valid()` が `false` になり、ターゲットボタンが常に無効化されました。メソッド本体の `Callable` と引数配列を別々に保持し、シグナル側ではローカルターゲットのみをバインドするようにしてください。
-- **ターゲットボタンの `Callable` はメタデータ経由で保持する**
-  - ターゲット候補の辞書に格納した `Callable` をそのまま `button.pressed.connect(callback)` したところ、押下時に何も起きず攻撃対象を選択できませんでした。
-  - ボタン生成時に `button.set_meta("target_callback", callable)` で保持し、シグナルは `Callable(self, "_on_target_button_pressed").bind(button)` のように共通ハンドラへ接続して `callable.call()` を実行してください。
+- **ターゲット選択 UI ではメタデータに選択情報を保存して共通ハンドラで処理する**
+  - `_clear_targets()` のタイミングで `_target_callback` をリセットするため、グローバル変数や一時的な `Callable` を保持しているとボタンを押しても行動が登録されなくなります。
+  - 以前は `button.set_meta("target_callback", callable)` で `Callable` を保存していましたが、Godot 4.5 では押下時に `callable.is_valid()` が `false` へ変化し、攻撃対象を選択できない不具合が再発しました。
+  - ターゲットボタンを生成する際は `{ "mode": "skill", "target": target, "actor": actor }` などの辞書を `button.set_meta("target_payload", payload)` で保持し、`_on_target_button_pressed()` から種別ごとの処理関数を呼び出してください。
+  - メタデータに必要な情報を残しておけば UI の再描画や `_clear_targets()` 実行後でも選択内容が失われず、攻撃・アイテムともにターゲット決定が確実に機能します。
 - **シグナル接続で引数を束縛するときは `Callable` を明示する**
   - `button.pressed.connect(_on_pressed.bind(arg))` のようにメソッド参照を直接 `bind` するとコネクションが無効になり、ボタンを押しても何も起きませんでした。
   - 必ず `button.pressed.connect(Callable(self, "_on_pressed").bind(arg))` の形式で `Callable` を生成してから `bind` を使用してください。

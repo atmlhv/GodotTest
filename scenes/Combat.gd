@@ -26,7 +26,7 @@ const OPTIONS_SCROLL_PATH: NodePath = NodePath("RootLayout/BodyMargin/Panel/VBox
 const OPTIONS_LIST_PATH: NodePath = NodePath("RootLayout/BodyMargin/Panel/VBox/CommandPanel/OptionsScroll/OptionsList")
 const TARGET_SCROLL_PATH: NodePath = NodePath("RootLayout/BodyMargin/Panel/VBox/CommandPanel/TargetScroll")
 const TARGET_LIST_PATH: NodePath = NodePath("RootLayout/BodyMargin/Panel/VBox/CommandPanel/TargetScroll/TargetList")
-const TARGET_CALLBACK_META: StringName = StringName("target_callback")
+const TARGET_PAYLOAD_META: StringName = StringName("target_payload")
 const ATTACK_BUTTON_PATH: NodePath = NodePath("RootLayout/BodyMargin/Panel/VBox/CommandPanel/CommandButtons/AttackButton")
 const SKILL_BUTTON_PATH: NodePath = NodePath("RootLayout/BodyMargin/Panel/VBox/CommandPanel/CommandButtons/SkillButton")
 const SPELL_BUTTON_PATH: NodePath = NodePath("RootLayout/BodyMargin/Panel/VBox/CommandPanel/CommandButtons/SpellButton")
@@ -433,12 +433,17 @@ func _show_target_options(buttons: Array[Dictionary], label: String, cancelable:
 		button.text = str(button_data.get("text", "Target"))
 		button.disabled = bool(button_data.get("disabled", false))
 		button.focus_mode = Control.FOCUS_NONE
-		var callback_variant: Variant = button_data.get("callback")
-		if callback_variant is Callable:
-			var callable: Callable = callback_variant
-			if callable.is_valid() and not button.disabled:
-				button.set_meta(TARGET_CALLBACK_META, callable)
-				button.pressed.connect(Callable(self, "_on_target_button_pressed").bind(button))
+		var payload_variant: Variant = button_data.get("payload")
+		if not button.disabled and payload_variant is Dictionary:
+			var payload: Dictionary = payload_variant
+			button.set_meta(TARGET_PAYLOAD_META, payload)
+			button.pressed.connect(Callable(self, "_on_target_button_pressed").bind(button))
+		else:
+			var callback_variant: Variant = button_data.get("callback")
+			if callback_variant is Callable:
+				var callable: Callable = callback_variant
+				if callable.is_valid():
+					button.pressed.connect(callable)
 		target_list.add_child(button)
 	if cancelable:
 		var cancel_button := Button.new()
@@ -450,13 +455,45 @@ func _show_target_options(buttons: Array[Dictionary], label: String, cancelable:
 func _on_target_button_pressed(button: Button) -> void:
 	if button == null:
 		return
-	var stored_callback: Variant = button.get_meta(TARGET_CALLBACK_META)
-	if not (stored_callback is Callable):
+	var payload_variant: Variant = button.get_meta(TARGET_PAYLOAD_META)
+	if not (payload_variant is Dictionary):
 		return
-	var callable: Callable = stored_callback
-	if not callable.is_valid():
+	var payload: Dictionary = payload_variant
+	var mode: String = str(payload.get("mode", ""))
+	match mode:
+		"skill":
+			_handle_skill_target_payload(payload)
+		"item":
+			_handle_item_target_payload(payload)
+		_:
+			pass
+
+func _handle_skill_target_payload(payload: Dictionary) -> void:
+	var target_variant: Variant = payload.get("target")
+	if not (target_variant is BattleEntity):
 		return
-	callable.call()
+	var actor_variant: Variant = payload.get("actor")
+	if not (actor_variant is BattleEntity):
+		return
+	var skill_variant: Variant = payload.get("skill")
+	var skill_dict: Dictionary = {}
+	if skill_variant is Dictionary:
+		skill_dict = skill_variant
+	_on_skill_target_selected(target_variant, actor_variant, skill_dict)
+
+func _handle_item_target_payload(payload: Dictionary) -> void:
+	var target_variant: Variant = payload.get("target")
+	if not (target_variant is BattleEntity):
+		return
+	var actor_variant: Variant = payload.get("actor")
+	if not (actor_variant is BattleEntity):
+		return
+	var slot_index: int = int(payload.get("slot_index", -1))
+	var item_variant: Variant = payload.get("item_data")
+	var item_dict: Dictionary = {}
+	if item_variant is Dictionary:
+		item_dict = item_variant
+	_on_item_target_selected(target_variant, actor_variant, slot_index, item_dict)
 
 func _cancel_target_selection() -> void:
 	_clear_targets()
@@ -583,54 +620,63 @@ func _prompt_for_skill(actor: BattleEntity, skill: Dictionary) -> void:
 	if skill.is_empty():
 		_append_log(tr("%s has no usable skill.") % actor.name)
 		return
-	var cost: int = int(skill.get("cost_mp", 0))
+	var resolved_skill: Dictionary = skill.duplicate(true)
+	var cost: int = int(resolved_skill.get("cost_mp", 0))
 	if cost > actor.mp:
-		_append_log(tr("%s lacks the MP to use %s.") % [actor.name, _localize_skill_name(skill)])
+		_append_log(tr("%s lacks the MP to use %s.") % [actor.name, _localize_skill_name(resolved_skill)])
 		return
-	var target_mode: String = str(skill.get("target", "enemy_single"))
+	var target_mode: String = str(resolved_skill.get("target", "enemy_single"))
 	match target_mode:
 		"enemy_single":
 			var targets: Array[BattleEntity] = _battle.get_live_enemies()
 			if targets.size() == 1:
-				_register_skill_command(actor, skill, [targets[0]])
+				_register_skill_command(actor, resolved_skill, [targets[0]])
 				return
 			var buttons: Array[Dictionary] = []
 			for target in targets:
 				var disabled: bool = not target.is_alive()
-				var callback := Callable()
-				if not disabled:
-					callback = Callable(self, "_on_skill_target_selected").bind(target, actor, skill)
-				buttons.append({
+				var button_entry: Dictionary = {
 					"text": "%s (%d/%d HP)" % [target.name, target.hp, target.max_hp],
 					"disabled": disabled,
-					"callback": callback,
-				})
+				}
+				if not disabled:
+					button_entry["payload"] = {
+						"mode": "skill",
+						"target": target,
+						"actor": actor,
+						"skill": resolved_skill.duplicate(true),
+					}
+				buttons.append(button_entry)
 			_cancel_target_callback = Callable(self, "_restore_command_prompt")
 			_show_target_options(buttons, tr("Select an enemy target."))
 		"ally_single":
 			var allies: Array[BattleEntity] = _battle.get_live_allies()
 			if allies.size() == 1:
-				_register_skill_command(actor, skill, [allies[0]])
+				_register_skill_command(actor, resolved_skill, [allies[0]])
 				return
 			var ally_buttons: Array[Dictionary] = []
 			for ally in allies:
 				var disabled: bool = not ally.is_alive()
-				var callback := Callable()
-				if not disabled:
-					callback = Callable(self, "_on_skill_target_selected").bind(ally, actor, skill)
-				ally_buttons.append({
+				var ally_entry: Dictionary = {
 					"text": "%s (%d/%d HP)" % [ally.name, ally.hp, ally.max_hp],
 					"disabled": disabled,
-					"callback": callback,
-				})
+				}
+				if not disabled:
+					ally_entry["payload"] = {
+						"mode": "skill",
+						"target": ally,
+						"actor": actor,
+						"skill": resolved_skill.duplicate(true),
+					}
+				ally_buttons.append(ally_entry)
 			_cancel_target_callback = Callable(self, "_restore_command_prompt")
 			_show_target_options(ally_buttons, tr("Select an ally target."))
 		"enemy_all":
-			_register_skill_command(actor, skill, _battle.get_live_enemies())
+			_register_skill_command(actor, resolved_skill, _battle.get_live_enemies())
 		"ally_all":
-			_register_skill_command(actor, skill, _battle.get_live_allies())
+			_register_skill_command(actor, resolved_skill, _battle.get_live_allies())
 		_:
-			_register_skill_command(actor, skill, _battle.get_live_enemies())
+			_register_skill_command(actor, resolved_skill, _battle.get_live_enemies())
 
 func _on_skill_target_selected(target: BattleEntity, actor: BattleEntity, skill: Dictionary) -> void:
 	_clear_targets()
@@ -684,6 +730,7 @@ func _on_item_option_selected(slot_index: int, item_data: Dictionary) -> void:
 	_clear_options()
 	if _current_actor == null or not _current_actor.is_alive():
 		return
+	var actor_ref: BattleEntity = _current_actor
 	var effect: String = str(item_data.get("effect", ""))
 	var item_id: String = str(item_data.get("id", ""))
 	match effect:
@@ -695,36 +742,41 @@ func _on_item_option_selected(slot_index: int, item_data: Dictionary) -> void:
 			var item_buttons: Array[Dictionary] = []
 			for target in targets:
 				var disabled: bool = not target.is_alive()
-				var callback := Callable()
-				if not disabled:
-					callback = Callable(self, "_on_item_target_selected").bind(target, slot_index, item_data)
-				item_buttons.append({
+				var entry: Dictionary = {
 					"text": "%s (%d/%d HP)" % [target.name, target.hp, target.max_hp],
 					"disabled": disabled,
-					"callback": callback,
-				})
+				}
+				if not disabled:
+					entry["payload"] = {
+						"mode": "item",
+						"target": target,
+						"actor": actor_ref,
+						"slot_index": slot_index,
+						"item_data": item_data.duplicate(true),
+					}
+				item_buttons.append(entry)
 			_cancel_target_callback = Callable(self, "_restore_command_prompt")
 			_show_target_options(item_buttons, tr("Select an ally for %s.") % _localize_item_name(item_data))
 		"escape":
-			var command := BattleCommand.new(_current_actor, BattleCommand.TYPE_ITEM)
+			var command := BattleCommand.new(actor_ref, BattleCommand.TYPE_ITEM)
 			command.item_id = item_id
 			command.item_slot = slot_index
 			command.item_effect = effect
 			command.item_payload = item_data.duplicate(true)
 			_commit_command(command)
 		_:
-			var command := BattleCommand.new(_current_actor, BattleCommand.TYPE_ITEM)
-			command.item_id = item_id
-			command.item_slot = slot_index
-			command.item_effect = effect
-			command.item_payload = item_data.duplicate(true)
-			_commit_command(command)
+			var command_default := BattleCommand.new(actor_ref, BattleCommand.TYPE_ITEM)
+			command_default.item_id = item_id
+			command_default.item_slot = slot_index
+			command_default.item_effect = effect
+			command_default.item_payload = item_data.duplicate(true)
+			_commit_command(command_default)
 
-func _on_item_target_selected(target: BattleEntity, slot_index: int, item_data: Dictionary) -> void:
+func _on_item_target_selected(target: BattleEntity, actor: BattleEntity, slot_index: int, item_data: Dictionary) -> void:
 	_clear_targets()
-	if _current_actor == null:
+	if actor == null or not actor.is_alive():
 		return
-	var command := BattleCommand.new(_current_actor, BattleCommand.TYPE_ITEM)
+	var command := BattleCommand.new(actor, BattleCommand.TYPE_ITEM)
 	command.item_id = str(item_data.get("id", ""))
 	command.item_slot = slot_index
 	command.item_effect = str(item_data.get("effect", ""))
