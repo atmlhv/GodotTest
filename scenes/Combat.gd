@@ -208,7 +208,7 @@ class BattleSimulation:
             if enemy.is_alive():
                 enemy.roll_initiative()
                 participants.append(enemy)
-        participants.sort_custom(self, "_sort_by_initiative")
+        participants.sort_custom(Callable(self, "_sort_by_initiative"))
         return participants
 
     func _sort_by_initiative(a: BattleEntity, b: BattleEntity) -> bool:
