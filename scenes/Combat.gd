@@ -509,18 +509,18 @@ func _resolve_payload_entity(payload: Dictionary, key: String) -> BattleEntity:
 		return value
 	if value is WeakRef:
 		var weak: WeakRef = value
-		var referenced := weak.get_ref()
+		var referenced: Object = weak.get_ref()
 		if referenced is BattleEntity:
 			return referenced
 		if referenced is Object:
 			var instance_object: Object = referenced
-			var candidate := _resolve_entity_by_instance_id(instance_object.get_instance_id())
+			var candidate: BattleEntity = _resolve_entity_by_instance_id(instance_object.get_instance_id())
 			if candidate != null:
 				return candidate
 		return null
 	if value is RefCounted:
 		var refcounted: RefCounted = value
-		var candidate_from_ref := _resolve_entity_by_instance_id(refcounted.get_instance_id())
+		var candidate_from_ref: BattleEntity = _resolve_entity_by_instance_id(refcounted.get_instance_id())
 		if candidate_from_ref != null:
 			return candidate_from_ref
 	var instance_id: int = int(payload.get("%s_instance_id" % key, 0))
