@@ -1,0 +1,19 @@
+# Coding Guidelines Memo
+
+最近発生したエラーを元にしたコーディング規約メモです。作業前に確認し、同様の不具合を防いでください。
+
+- **インデントは既存ファイルのスタイルに合わせる**
+  - GDScript ファイルではタブとスペースが混在すると `Parse Error: Used space character for indentation instead of tab` が発生します。
+  - 既存コードがタブでインデントされている場合は必ずタブを使用し、スペースと混在させないでください。
+- **三項演算子の代わりに `if ... else` 構文を使う**
+  - Godot 4 の GDScript では `condition ? a : b` 形式はサポートされません。
+  - 代わりに `a if condition else b` を使用しないと `Parse Error: Unexpected "?" in source` が発生します。
+- **`sort_custom` には `Callable` を渡す**
+  - Godot 4 の `Array.sort_custom` は 1 つの `Callable` 引数のみを受け取ります。
+  - `sort_custom(self, "method")` のように 2 引数で呼び出すと `Too many arguments for "sort_custom()" call` エラーになります。
+  - メソッド参照を渡したい場合は `array.sort_custom(Callable(self, "method"))` のように記述してください。
+- **差分やマージ時のマーカーを残さない**
+  - `*** End Patch` や `<<<<<<<` などのマーカーがファイルに残ると `Parse Error: Unexpected "**" in class body` のような構文エラーになります。
+  - 編集後は不要なマーカーが残っていないか必ず確認し、クリーンな状態で保存してください。
+
+上記に違反するとスクリプトが読み込まれず、ゲーム起動時にエラーが表示されます。常に Godot の構文ルールと既存スタイルに従ってください。
