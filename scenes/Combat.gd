@@ -502,34 +502,56 @@ func _handle_item_target_payload(payload: Dictionary) -> void:
 func _resolve_payload_entity(payload: Dictionary, key: String) -> BattleEntity:
 	if payload.is_empty():
 		return null
-	if payload.has(key):
-		var value: Variant = payload.get(key)
-		if value is BattleEntity:
-			return value
-		if value is WeakRef:
-			var weak: WeakRef = value
-			var referenced: Object = weak.get_ref()
-			if referenced is BattleEntity:
-				return referenced
-			if referenced is RefCounted:
-				var candidate_from_ref: BattleEntity = referenced as BattleEntity
-				if candidate_from_ref != null:
-					return candidate_from_ref
-		if value is RefCounted:
-			var ref_candidate: BattleEntity = value as BattleEntity
-			if ref_candidate != null:
-				return ref_candidate
+	var key_variants: Array = [key, StringName(key)]
+	for candidate in key_variants:
+		if payload.has(candidate):
+			var value: Variant = payload.get(candidate)
+			var resolved: BattleEntity = _coerce_payload_entity(value)
+			if resolved != null:
+				return resolved
 	var uid_key: String = "%s_uid" % key
-	var uid: int = int(payload.get(uid_key, 0))
+	var uid: int = _extract_payload_int(payload, uid_key)
 	if uid != 0:
-		var resolved: BattleEntity = _resolve_entity_by_uid(uid)
-		if resolved != null:
-			return resolved
+		var resolved_by_uid: BattleEntity = _resolve_entity_by_uid(uid)
+		if resolved_by_uid != null:
+			return resolved_by_uid
 	var instance_key: String = "%s_instance_id" % key
-	var instance_id: int = int(payload.get(instance_key, 0))
+	var instance_id: int = _extract_payload_int(payload, instance_key)
 	if instance_id != 0:
-		return _resolve_entity_by_instance_id(instance_id)
+		var resolved_by_instance: BattleEntity = _resolve_entity_by_instance_id(instance_id)
+		if resolved_by_instance != null:
+			return resolved_by_instance
+	if not payload.is_empty():
+		push_warning("Failed to resolve %s from payload keys: %s" % [key, payload.keys()])
 	return null
+
+func _coerce_payload_entity(value: Variant) -> BattleEntity:
+	if value is BattleEntity:
+		return value
+	if value is WeakRef:
+		var weak: WeakRef = value
+		var referenced: Object = weak.get_ref()
+		if referenced is BattleEntity:
+			return referenced
+		if referenced is RefCounted:
+			var candidate_from_ref: BattleEntity = referenced as BattleEntity
+			if candidate_from_ref != null:
+				return candidate_from_ref
+	if value is RefCounted:
+		var ref_candidate: BattleEntity = value as BattleEntity
+		if ref_candidate != null:
+			return ref_candidate
+	return null
+
+func _extract_payload_int(payload: Dictionary, key: String) -> int:
+	var key_variants: Array = [key, StringName(key)]
+	for candidate in key_variants:
+		if payload.has(candidate):
+			var raw_value: Variant = payload.get(candidate)
+			if raw_value == null:
+				continue
+			return int(raw_value)
+	return 0
 
 func _build_skill_target_payload(actor: BattleEntity, target: BattleEntity, skill: Dictionary) -> Dictionary:
 	return {
