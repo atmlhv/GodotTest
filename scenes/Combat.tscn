@@ -10,44 +10,66 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 script = ExtResource("2")
 
-
-[node name="Layout" type="VBoxContainer" parent="."]
+[node name="RootLayout" type="VBoxContainer" parent="."]
 layout_mode = 1
 anchors_preset = 0
 anchor_right = 1.0
 anchor_bottom = 1.0
 size_flags_horizontal = 4
 size_flags_vertical = 4
-theme_override_constants/separation = 24
+theme_override_constants/separation = 32
 
-[node name="PartyPanel" parent="Layout" instance=ExtResource("1")]
+[node name="PartyPanel" parent="RootLayout" instance=ExtResource("1")]
 layout_mode = 2
 size_flags_horizontal = 4
+size_flags_vertical = 1
 
-[node name="Content" type="MarginContainer" parent="Layout"]
+[node name="BodyMargin" type="MarginContainer" parent="RootLayout"]
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 4
 theme_override_constants/margin_left = 96
 theme_override_constants/margin_right = 96
-theme_override_constants/margin_top = 32
+theme_override_constants/margin_top = 16
 theme_override_constants/margin_bottom = 32
 
-[node name="VBox" type="VBoxContainer" parent="Layout/Content"]
+[node name="Panel" type="PanelContainer" parent="RootLayout/BodyMargin"]
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 4
-alignment = 0
-custom_constants/separation = 16
 
-[node name="InfoLabel" type="Label" parent="VBox"]
+[node name="VBox" type="VBoxContainer" parent="RootLayout/BodyMargin/Panel"]
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 4
+theme_override_constants/separation = 24
+
+[node name="Heading" type="Label" parent="RootLayout/BodyMargin/Panel/VBox"]
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Battle Report"
 horizontal_alignment = 1
-text = "Encounter pending"
 
-[node name="CompleteButton" type="Button" parent="VBox"]
+[node name="LogScroll" type="ScrollContainer" parent="RootLayout/BodyMargin/Panel/VBox"]
 layout_mode = 2
 size_flags_horizontal = 4
+size_flags_vertical = 4
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 2
+
+[node name="InfoLabel" type="Label" parent="RootLayout/BodyMargin/Panel/VBox/LogScroll"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+text = "Encounter pending"
+vertical_alignment = 0
+
+[node name="ButtonRow" type="HBoxContainer" parent="RootLayout/BodyMargin/Panel/VBox"]
+layout_mode = 2
+size_flags_horizontal = 4
+alignment = 2
+
+[node name="CompleteButton" type="Button" parent="RootLayout/BodyMargin/Panel/VBox/ButtonRow"]
+layout_mode = 2
+size_flags_horizontal = 2
 text = "Resolve Encounter"
