@@ -341,6 +341,8 @@ func _populate_entity_list(container: VBoxContainer, entities: Array[BattleEntit
 		button.set_meta("entity", entity)
 		if is_ally:
 			button.pressed.connect(Callable(self, "_on_ally_entry_pressed").bind(button))
+		else:
+			button.pressed.connect(Callable(self, "_on_enemy_entry_pressed").bind(button))
 		container.add_child(button)
 
 func _format_entity_text(entity: BattleEntity, is_ally: bool) -> String:
@@ -360,6 +362,34 @@ func _format_entity_text(entity: BattleEntity, is_ally: bool) -> String:
 	var hp_text: String = "%d/%d" % [entity.hp, entity.max_hp]
 	var mp_text: String = "%d/%d" % [entity.mp, entity.max_mp]
 	return "%s %s\nHP %s | MP %s%s" % [prefix, entity.name, hp_text, mp_text, status_text]
+
+func _on_enemy_entry_pressed(button: Button) -> void:
+	# Only when target selection UI is open
+	if target_scroll == null or target_list == null:
+		return
+	if not target_scroll.visible:
+		return
+	if button == null:
+		return
+	# Get clicked entity from arena entry
+	if not button.has_meta("entity"):
+		return
+	var clicked: Variant = button.get_meta("entity")
+	if clicked == null:
+		return
+	var clicked_entity: BattleEntity = clicked as BattleEntity
+	if clicked_entity == null:
+		return
+	# Find corresponding target button in TargetList and delegate
+	for child in target_list.get_children():
+		if child is Button and child.has_meta(TARGET_PAYLOAD_META):
+			var payload_variant: Variant = child.get_meta(TARGET_PAYLOAD_META)
+			if payload_variant is Dictionary:
+				var payload: Dictionary = payload_variant
+				var target: BattleEntity = _resolve_payload_entity(payload, "target")
+				if target != null and target.uid == clicked_entity.uid:
+					_on_target_button_pressed(child)
+					return
 
 func _append_log(entry: String) -> void:
 	_battle_log.append(entry)
@@ -502,56 +532,34 @@ func _handle_item_target_payload(payload: Dictionary) -> void:
 func _resolve_payload_entity(payload: Dictionary, key: String) -> BattleEntity:
 	if payload.is_empty():
 		return null
-	var key_variants: Array = [key, StringName(key)]
-	for candidate in key_variants:
-		if payload.has(candidate):
-			var value: Variant = payload.get(candidate)
-			var resolved: BattleEntity = _coerce_payload_entity(value)
-			if resolved != null:
-				return resolved
+	if payload.has(key):
+		var value: Variant = payload.get(key)
+		if value is BattleEntity:
+			return value
+		if value is WeakRef:
+			var weak: WeakRef = value
+			var referenced: Object = weak.get_ref()
+			if referenced is BattleEntity:
+				return referenced
+			if referenced is RefCounted:
+				var candidate_from_ref: BattleEntity = referenced as BattleEntity
+				if candidate_from_ref != null:
+					return candidate_from_ref
+		if value is RefCounted:
+			var ref_candidate: BattleEntity = value as BattleEntity
+			if ref_candidate != null:
+				return ref_candidate
 	var uid_key: String = "%s_uid" % key
-	var uid: int = _extract_payload_int(payload, uid_key)
+	var uid: int = int(payload.get(uid_key, 0))
 	if uid != 0:
-		var resolved_by_uid: BattleEntity = _resolve_entity_by_uid(uid)
-		if resolved_by_uid != null:
-			return resolved_by_uid
+		var resolved: BattleEntity = _resolve_entity_by_uid(uid)
+		if resolved != null:
+			return resolved
 	var instance_key: String = "%s_instance_id" % key
-	var instance_id: int = _extract_payload_int(payload, instance_key)
+	var instance_id: int = int(payload.get(instance_key, 0))
 	if instance_id != 0:
-		var resolved_by_instance: BattleEntity = _resolve_entity_by_instance_id(instance_id)
-		if resolved_by_instance != null:
-			return resolved_by_instance
-	if not payload.is_empty():
-		push_warning("Failed to resolve %s from payload keys: %s" % [key, payload.keys()])
+		return _resolve_entity_by_instance_id(instance_id)
 	return null
-
-func _coerce_payload_entity(value: Variant) -> BattleEntity:
-	if value is BattleEntity:
-		return value
-	if value is WeakRef:
-		var weak: WeakRef = value
-		var referenced: Object = weak.get_ref()
-		if referenced is BattleEntity:
-			return referenced
-		if referenced is RefCounted:
-			var candidate_from_ref: BattleEntity = referenced as BattleEntity
-			if candidate_from_ref != null:
-				return candidate_from_ref
-	if value is RefCounted:
-		var ref_candidate: BattleEntity = value as BattleEntity
-		if ref_candidate != null:
-			return ref_candidate
-	return null
-
-func _extract_payload_int(payload: Dictionary, key: String) -> int:
-	var key_variants: Array = [key, StringName(key)]
-	for candidate in key_variants:
-		if payload.has(candidate):
-			var raw_value: Variant = payload.get(candidate)
-			if raw_value == null:
-				continue
-			return int(raw_value)
-	return 0
 
 func _build_skill_target_payload(actor: BattleEntity, target: BattleEntity, skill: Dictionary) -> Dictionary:
 	return {
