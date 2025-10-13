@@ -51,6 +51,27 @@ func _initialize_ui() -> void:
     if log_scroll != null:
         log_scroll.scroll_vertical = 0
 
+func _cache_ui_nodes() -> void:
+    info_label = get_node_or_null(INFO_LABEL_PATH) as Label
+    if info_label == null:
+        push_error("Combat scene is missing the info label at %s" % INFO_LABEL_PATH)
+    log_scroll = get_node_or_null(LOG_SCROLL_PATH) as ScrollContainer
+    if log_scroll == null:
+        push_error("Combat scene is missing the log scroll container at %s" % LOG_SCROLL_PATH)
+    continue_button = get_node_or_null(CONTINUE_BUTTON_PATH) as Button
+    if continue_button == null:
+        push_error("Combat scene is missing the continue button at %s" % CONTINUE_BUTTON_PATH)
+
+func _initialize_ui() -> void:
+    if continue_button != null:
+        continue_button.disabled = true
+        continue_button.pressed.connect(_on_complete_pressed)
+    if info_label != null:
+        info_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+        info_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+        info_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        info_label.text = tr("Encounter pending")
+
 func _start_simulation() -> void:
     var party_overview: Array[Dictionary] = Game.get_party_overview()
     var enemy_wave: Array[Dictionary] = _select_enemy_wave(Game.get_current_act())
