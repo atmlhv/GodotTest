@@ -473,10 +473,10 @@ func _on_target_button_pressed(button: Button) -> void:
 			pass
 
 func _handle_skill_target_payload(payload: Dictionary) -> void:
-	var target := _resolve_payload_entity(payload, "target")
+	var target: BattleEntity = _resolve_payload_entity(payload, "target")
 	if target == null or not target.is_alive():
 		return
-	var actor := _resolve_payload_entity(payload, "actor")
+	var actor: BattleEntity = _resolve_payload_entity(payload, "actor")
 	if actor == null or not actor.is_alive():
 		return
 	var skill_variant: Variant = payload.get("skill")
@@ -486,10 +486,10 @@ func _handle_skill_target_payload(payload: Dictionary) -> void:
 	_on_skill_target_selected(target, actor, skill_dict)
 
 func _handle_item_target_payload(payload: Dictionary) -> void:
-	var target := _resolve_payload_entity(payload, "target")
+	var target: BattleEntity = _resolve_payload_entity(payload, "target")
 	if target == null:
 		return
-	var actor := _resolve_payload_entity(payload, "actor")
+	var actor: BattleEntity = _resolve_payload_entity(payload, "actor")
 	if actor == null or not actor.is_alive():
 		return
 	var slot_index: int = int(payload.get("slot_index", -1))
