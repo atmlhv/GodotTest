@@ -529,8 +529,8 @@ func _resolve_payload_entity(payload: Dictionary, key: String) -> BattleEntity:
 	return null
 
 func _build_skill_target_payload(actor: BattleEntity, target: BattleEntity, skill: Dictionary) -> Dictionary:
-	var actor_ref := weakref(actor)
-	var target_ref := weakref(target)
+	var actor_ref: WeakRef = weakref(actor)
+	var target_ref: WeakRef = weakref(target)
 	return {
 		"mode": "skill",
 		"target": target_ref,
@@ -541,8 +541,8 @@ func _build_skill_target_payload(actor: BattleEntity, target: BattleEntity, skil
 	}
 
 func _build_item_target_payload(actor: BattleEntity, target: BattleEntity, slot_index: int, item_data: Dictionary) -> Dictionary:
-	var actor_ref := weakref(actor)
-	var target_ref := weakref(target)
+	var actor_ref: WeakRef = weakref(actor)
+	var target_ref: WeakRef = weakref(target)
 	return {
 		"mode": "item",
 		"target": target_ref,

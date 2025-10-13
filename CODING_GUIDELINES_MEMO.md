@@ -39,5 +39,8 @@
   - Godot 4.5 では `var target := _resolve_payload_entity(...)` のように `:=` で受けると、`null` を返す可能性がある関数の場合 `Variant` 型として推論されます。
   - `_handle_item_target_payload()` でこの書き方をすると `Error at (512, 9): The variable type is being inferred from a Variant value, so it will be typed as Variant.` が表示され、警告がエラー扱いになります。
   - `var target: BattleEntity = ...` のように明示的な型注釈を追加し、参照が `null` かどうかをチェックしてから処理を続けてください。
+- **`weakref()` の戻り値を `:=` で受けると `Variant` 型に推論される**
+  - `weakref(actor)` は `WeakRef` を返しますが、`var actor_ref := weakref(actor)` のように書くと戻り値が `Variant` 扱いになり `Error at (532, 5): The variable type is being inferred from a Variant value, so it will be typed as Variant.` が発生しました。
+  - `var actor_ref: WeakRef = weakref(actor)` のように `WeakRef` 型を明記し、他のメタデータ構築処理でも同様の注釈を付けてください。
 
 上記に違反するとスクリプトが読み込まれず、ゲーム起動時にエラーが表示されます。常に Godot の構文ルールと既存スタイルに従ってください。
