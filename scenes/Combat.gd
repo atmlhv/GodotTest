@@ -7,8 +7,8 @@ const RNG_STREAM_AI := "ai"
 const VARIANCE_MIN: float = 0.9
 const VARIANCE_MAX: float = 1.1
 
-@onready var info_label: Label = $VBox/InfoLabel
-@onready var continue_button: Button = $VBox/CompleteButton
+@onready var info_label: Label = $Layout/Content/VBox/InfoLabel
+@onready var continue_button: Button = $Layout/Content/VBox/CompleteButton
 
 var _battle_log: Array[String] = []
 var _simulation: BattleSimulation
