@@ -11,9 +11,9 @@ const INFO_LABEL_PATH: NodePath = NodePath("RootLayout/BodyMargin/Panel/VBox/Log
 const CONTINUE_BUTTON_PATH: NodePath = NodePath("RootLayout/BodyMargin/Panel/VBox/ButtonRow/CompleteButton")
 const LOG_SCROLL_PATH: NodePath = NodePath("RootLayout/BodyMargin/Panel/VBox/LogScroll")
 
-var info_label: Label
-var continue_button: Button
-var log_scroll: ScrollContainer
+@onready var info_label: Label = get_node_or_null(INFO_LABEL_PATH) as Label
+@onready var continue_button: Button = get_node_or_null(CONTINUE_BUTTON_PATH) as Button
+@onready var log_scroll: ScrollContainer = get_node_or_null(LOG_SCROLL_PATH) as ScrollContainer
 
 var _battle_log: Array[String] = []
 var _simulation: BattleSimulation
@@ -21,19 +21,16 @@ var _battle_result: Dictionary = {}
 var _encounter_resolved: bool = false
 
 func _ready() -> void:
-    _cache_ui_nodes()
+    _report_missing_ui_nodes()
     _initialize_ui()
     if continue_button == null:
         _resolve_encounter()
 
-func _cache_ui_nodes() -> void:
-    info_label = get_node_or_null(INFO_LABEL_PATH) as Label
+func _report_missing_ui_nodes() -> void:
     if info_label == null:
         push_error("Combat scene is missing the info label at %s" % INFO_LABEL_PATH)
-    log_scroll = get_node_or_null(LOG_SCROLL_PATH) as ScrollContainer
     if log_scroll == null:
         push_error("Combat scene is missing the log scroll container at %s" % LOG_SCROLL_PATH)
-    continue_button = get_node_or_null(CONTINUE_BUTTON_PATH) as Button
     if continue_button == null:
         push_error("Combat scene is missing the continue button at %s" % CONTINUE_BUTTON_PATH)
 
@@ -42,7 +39,9 @@ func _initialize_ui() -> void:
     if continue_button != null:
         continue_button.disabled = false
         continue_button.text = tr("Start Battle")
-        continue_button.pressed.connect(_on_complete_pressed)
+        var pressed_callable := Callable(self, "_on_complete_pressed")
+        if not continue_button.pressed.is_connected(pressed_callable):
+            continue_button.pressed.connect(pressed_callable)
     if info_label != null:
         info_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
         info_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
@@ -50,27 +49,6 @@ func _initialize_ui() -> void:
         info_label.text = tr("Encounter pending. Press Start Battle to resolve.")
     if log_scroll != null:
         log_scroll.scroll_vertical = 0
-
-func _cache_ui_nodes() -> void:
-    info_label = get_node_or_null(INFO_LABEL_PATH) as Label
-    if info_label == null:
-        push_error("Combat scene is missing the info label at %s" % INFO_LABEL_PATH)
-    log_scroll = get_node_or_null(LOG_SCROLL_PATH) as ScrollContainer
-    if log_scroll == null:
-        push_error("Combat scene is missing the log scroll container at %s" % LOG_SCROLL_PATH)
-    continue_button = get_node_or_null(CONTINUE_BUTTON_PATH) as Button
-    if continue_button == null:
-        push_error("Combat scene is missing the continue button at %s" % CONTINUE_BUTTON_PATH)
-
-func _initialize_ui() -> void:
-    if continue_button != null:
-        continue_button.disabled = true
-        continue_button.pressed.connect(_on_complete_pressed)
-    if info_label != null:
-        info_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-        info_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-        info_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-        info_label.text = tr("Encounter pending")
 
 func _start_simulation() -> void:
     var party_overview: Array[Dictionary] = Game.get_party_overview()
