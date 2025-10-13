@@ -2,10 +2,11 @@
 
 最近発生したエラーを元にしたコーディング規約メモです。作業前に確認し、同様の不具合を防いでください。
 
-- **インデントは既存ファイルのスタイルに合わせる**
+- **インデントは既存ファイルのスタイルに合わせる（GDScript はタブ専用）**
   - GDScript ファイルではタブとスペースが混在すると `Parse Error: Used space character for indentation instead of tab` が発生します。
   - 既存コードがタブでインデントされている場合は必ずタブを使用し、スペースと混在させないでください。
   - 例: `scenes/Combat.gd` の `_initialize_battle()` 内でスペースを混ぜた結果、`Mixed use of tabs and spaces for indentation.` が出力されました。
+  - 例: 同じく `scenes/Combat.gd` の `_show_target_options()` で `if target_scroll == null or target_list == null:` 以下の行をスペースだけでインデントすると、`Error at (420, 103): Mixed use of tabs and spaces for indentation.` が発生しました。ブロック全体をタブのみで揃えてください。
 - **三項演算子の代わりに `if ... else` 構文を使う**
   - Godot 4 の GDScript では `condition ? a : b` 形式はサポートされません。
   - 代わりに `a if condition else b` を使用しないと `Parse Error: Unexpected "?" in source` が発生します。

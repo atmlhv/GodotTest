@@ -418,30 +418,30 @@ func _show_options(buttons: Array[Dictionary]) -> void:
 		options_list.add_child(option_button)
 
 func _show_target_options(buttons: Array[Dictionary], label: String, cancelable: bool = true) -> void:
-       if target_scroll == null or target_list == null:
-               return
-       _clear_target_buttons()
-       if buttons.is_empty():
-               target_scroll.visible = false
-               return
-       target_scroll.visible = true
-       if phase_label != null:
-               phase_label.text = label
-       for button_data in buttons:
-               var button := Button.new()
-               button.text = str(button_data.get("text", "Target"))
-               button.disabled = bool(button_data.get("disabled", false))
-               button.focus_mode = Control.FOCUS_NONE
-               var callback: Variant = button_data.get("callback")
-               if callback is Callable and (callback as Callable).is_valid() and not button.disabled:
-                       button.pressed.connect(callback)
-               target_list.add_child(button)
-       if cancelable:
-               var cancel_button := Button.new()
-               cancel_button.text = tr("Cancel")
-               cancel_button.focus_mode = Control.FOCUS_NONE
-               cancel_button.pressed.connect(Callable(self, "_cancel_target_selection"))
-               target_list.add_child(cancel_button)
+	if target_scroll == null or target_list == null:
+		return
+	_clear_target_buttons()
+	if buttons.is_empty():
+		target_scroll.visible = false
+		return
+	target_scroll.visible = true
+	if phase_label != null:
+		phase_label.text = label
+	for button_data in buttons:
+		var button := Button.new()
+		button.text = str(button_data.get("text", "Target"))
+		button.disabled = bool(button_data.get("disabled", false))
+		button.focus_mode = Control.FOCUS_NONE
+		var callback: Variant = button_data.get("callback")
+		if callback is Callable and (callback as Callable).is_valid() and not button.disabled:
+			button.pressed.connect(callback)
+		target_list.add_child(button)
+	if cancelable:
+		var cancel_button := Button.new()
+		cancel_button.text = tr("Cancel")
+		cancel_button.focus_mode = Control.FOCUS_NONE
+		cancel_button.pressed.connect(Callable(self, "_cancel_target_selection"))
+		target_list.add_child(cancel_button)
 
 func _cancel_target_selection() -> void:
 	_clear_targets()
