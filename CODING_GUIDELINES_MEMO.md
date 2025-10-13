@@ -42,5 +42,7 @@
 - **`weakref()` の戻り値を `:=` で受けると `Variant` 型に推論される**
   - `weakref(actor)` は `WeakRef` を返しますが、`var actor_ref := weakref(actor)` のように書くと戻り値が `Variant` 扱いになり `Error at (532, 5): The variable type is being inferred from a Variant value, so it will be typed as Variant.` が発生しました。
   - `var actor_ref: WeakRef = weakref(actor)` のように `WeakRef` 型を明記し、他のメタデータ構築処理でも同様の注釈を付けてください。
+  - さらに `WeakRef` をターゲット選択のペイロードに保存すると、`WeakRef.get_ref()` が `null` を返して攻撃対象を復元できなくなる事象が発生しました（`BattleEntity` は `RefCounted` なので GC されなくても `WeakRef` での参照解決に失敗するケースがある）。
+  - ターゲットやアクターの参照は `BattleEntity` をそのまま辞書に保持し、補助として `instance_id` を記録することで UI 再表示後でも確実に復元できました。
 
 上記に違反するとスクリプトが読み込まれず、ゲーム起動時にエラーが表示されます。常に Godot の構文ルールと既存スタイルに従ってください。

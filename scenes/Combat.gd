@@ -529,25 +529,21 @@ func _resolve_payload_entity(payload: Dictionary, key: String) -> BattleEntity:
 	return null
 
 func _build_skill_target_payload(actor: BattleEntity, target: BattleEntity, skill: Dictionary) -> Dictionary:
-	var actor_ref: WeakRef = weakref(actor)
-	var target_ref: WeakRef = weakref(target)
 	return {
 		"mode": "skill",
-		"target": target_ref,
+		"target": target,
 		"target_instance_id": target.get_instance_id(),
-		"actor": actor_ref,
+		"actor": actor,
 		"actor_instance_id": actor.get_instance_id(),
 		"skill": skill.duplicate(true),
 	}
 
 func _build_item_target_payload(actor: BattleEntity, target: BattleEntity, slot_index: int, item_data: Dictionary) -> Dictionary:
-	var actor_ref: WeakRef = weakref(actor)
-	var target_ref: WeakRef = weakref(target)
 	return {
 		"mode": "item",
-		"target": target_ref,
+		"target": target,
 		"target_instance_id": target.get_instance_id(),
-		"actor": actor_ref,
+		"actor": actor,
 		"actor_instance_id": actor.get_instance_id(),
 		"slot_index": slot_index,
 		"item_data": item_data.duplicate(true),
