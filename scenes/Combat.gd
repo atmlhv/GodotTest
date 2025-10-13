@@ -56,16 +56,38 @@ var _pending_commands: Array[BattleCommand] = []
 var _current_actor_index: int = 0
 var _current_actor: BattleEntity
 var _target_callback: Callable = Callable()
+var _target_callback_args: Array = []
 var _cancel_target_callback: Callable = Callable()
 var _formation_selection: BattleEntity
 var _encounter_resolved: bool = false
 var _battle_result: Dictionary = {}
 var _turn_counter: int = 0
+var _waiting_for_data: bool = false
+var _using_fallback_party: bool = false
 
 func _ready() -> void:
 	_report_missing_ui_nodes()
 	_connect_signals()
 	_initialize_ui()
+	_try_initialize_battle()
+
+func _try_initialize_battle() -> void:
+	if _is_data_ready():
+		_initialize_battle()
+		return
+	var callback := Callable(self, "_on_data_ready")
+	if not Data.data_loaded.is_connected(callback):
+		Data.data_loaded.connect(callback, CONNECT_ONE_SHOT)
+	if not _waiting_for_data:
+		_waiting_for_data = true
+		Data.load_all()
+
+func _is_data_ready() -> bool:
+	var skills_dataset: Variant = Data.get_dataset("skills")
+	return skills_dataset is Array
+
+func _on_data_ready() -> void:
+	_waiting_for_data = false
 	_initialize_battle()
 
 func _report_missing_ui_nodes() -> void:
@@ -117,22 +139,57 @@ func _initialize_ui() -> void:
 		continue_button.text = tr("Confirm Formation")
 
 func _initialize_battle() -> void:
+	_waiting_for_data = false
+	_using_fallback_party = false
 	_battle_log.clear()
 	_pending_commands.clear()
 	_current_actor = null
 	_formation_selection = null
 	_target_callback = Callable()
+	_target_callback_args.clear()
 	_cancel_target_callback = Callable()
 	_battle_result = {}
 	_encounter_resolved = false
 	_turn_counter = 0
-	var party_overview: Array[Dictionary] = Game.get_party_overview()
+	var party_overview: Array[Dictionary] = _resolve_party_overview()
 	var enemy_wave: Array[Dictionary] = _select_enemy_wave(Game.get_current_act())
 	_battle = BattleController.new(party_overview, enemy_wave, MAX_FRONTLINE_SIZE)
 	_append_log(tr("Battle begins!"))
 	_refresh_entity_panels()
 	_update_log_label()
 	_enter_phase(Phase.FORMATION)
+
+func _resolve_party_overview() -> Array[Dictionary]:
+	var party_overview: Array[Dictionary] = Game.get_party_overview()
+	if not party_overview.is_empty():
+		return party_overview
+	_using_fallback_party = true
+	var fallback_templates: Array[Dictionary] = Data.create_default_party()
+	var resolved: Array[Dictionary] = []
+	for template in fallback_templates:
+		resolved.append(template.duplicate(true))
+	if not resolved.is_empty():
+		push_warning("Party overview was empty; using default party templates for combat.")
+		return resolved
+	push_error("Unable to resolve party data for combat. Using minimal fallback party.")
+	resolved.append(_build_default_ally("Vanguard", 100, 20, 12, 8, 10, 6, [ATTACK_SKILL_ID]))
+	return resolved
+
+func _build_default_ally(name: String, hp: int, mp: int, atk: int, def_stat: int, agi: int, matk: int, skills: Array[String]) -> Dictionary:
+	return {
+		"id": "fallback_ally",
+		"name": name,
+		"hp": hp,
+		"max_hp": hp,
+		"mp": mp,
+		"max_mp": mp,
+		"atk": atk,
+		"def": def_stat,
+		"agi": agi,
+		"matk": matk,
+		"rec": 5,
+		"skills": skills,
+	}
 
 func _enter_phase(new_phase: Phase) -> void:
 	_phase = new_phase
@@ -286,7 +343,7 @@ func _populate_entity_list(container: VBoxContainer, entities: Array[BattleEntit
 		button.focus_mode = Control.FOCUS_NONE
 		button.set_meta("entity", entity)
 		if is_ally:
-			button.pressed.connect(_on_ally_entry_pressed.bind(button))
+			button.pressed.connect(Callable(self, "_on_ally_entry_pressed").bind(button))
 		container.add_child(button)
 
 func _format_entity_text(entity: BattleEntity, is_ally: bool) -> String:
@@ -334,14 +391,18 @@ func _clear_options() -> void:
 		options_scroll.visible = false
 
 func _clear_targets() -> void:
+	_clear_target_buttons()
+	if target_scroll != null:
+		target_scroll.visible = false
+	_target_callback = Callable()
+	_target_callback_args.clear()
+	_cancel_target_callback = Callable()
+
+func _clear_target_buttons() -> void:
 	if target_list == null:
 		return
 	for child in target_list.get_children():
 		child.queue_free()
-	if target_scroll != null:
-		target_scroll.visible = false
-	_target_callback = Callable()
-	_cancel_target_callback = Callable()
 
 func _show_options(buttons: Array[Dictionary]) -> void:
 	_clear_options()
@@ -363,38 +424,48 @@ func _show_options(buttons: Array[Dictionary]) -> void:
 		options_list.add_child(option_button)
 
 func _show_target_options(targets: Array[BattleEntity], label: String, cancelable: bool = true) -> void:
-	_clear_targets()
 	if target_scroll == null or target_list == null:
 		return
+	_clear_target_buttons()
 	if targets.is_empty():
 		target_scroll.visible = false
 		return
 	target_scroll.visible = true
 	if phase_label != null:
 		phase_label.text = label
+	var allow_selection: bool = _target_callback.is_valid()
 	for target in targets:
 		var button := Button.new()
 		button.text = "%s (%d/%d HP)" % [target.name, target.hp, target.max_hp]
-		button.disabled = not target.is_alive()
+		button.disabled = not target.is_alive() or not allow_selection
 		button.focus_mode = Control.FOCUS_NONE
-		button.set_meta("entity", target)
-		button.pressed.connect(_on_target_button_pressed.bind(button))
+		if allow_selection and not button.disabled:
+			button.pressed.connect(Callable(self, "_on_target_button_pressed").bind(target))
 		target_list.add_child(button)
 	if cancelable:
 		var cancel_button := Button.new()
 		cancel_button.text = tr("Cancel")
 		cancel_button.focus_mode = Control.FOCUS_NONE
-		cancel_button.pressed.connect(_cancel_target_selection)
+		if _cancel_target_callback.is_valid():
+			cancel_button.pressed.connect(Callable(self, "_invoke_cancel_callback").bind(_cancel_target_callback))
+		else:
+			cancel_button.pressed.connect(Callable(self, "_cancel_target_selection"))
 		target_list.add_child(cancel_button)
 
-func _on_target_button_pressed(button: Button) -> void:
-	if button == null:
+func _on_target_button_pressed(target: BattleEntity) -> void:
+	if target == null:
 		return
-	var entity: Variant = button.get_meta("entity")
-	if not (entity is BattleEntity):
+	if not _target_callback.is_valid():
 		return
-	if _target_callback.is_valid():
-		_target_callback.call(entity)
+	var args: Array = [target]
+	for extra in _target_callback_args:
+		args.append(extra)
+	_target_callback.callv(args)
+
+func _invoke_cancel_callback(callback: Callable) -> void:
+	_clear_targets()
+	if callback.is_valid():
+		callback.call()
 
 func _cancel_target_selection() -> void:
 	_clear_targets()
@@ -457,7 +528,7 @@ func _on_continue_pressed() -> void:
 func _on_attack_pressed() -> void:
 	if _current_actor == null or not _current_actor.is_alive():
 		return
-	var skill: Dictionary = Data.get_skill_by_id(ATTACK_SKILL_ID)
+	var skill: Dictionary = _get_skill_or_default(ATTACK_SKILL_ID)
 	_prompt_for_skill(_current_actor, skill)
 
 func _on_skill_pressed() -> void:
@@ -532,7 +603,8 @@ func _prompt_for_skill(actor: BattleEntity, skill: Dictionary) -> void:
 			if targets.size() == 1:
 				_register_skill_command(actor, skill, [targets[0]])
 				return
-			_target_callback = Callable(self, "_on_skill_target_selected").bind(actor, skill)
+			_target_callback = Callable(self, "_on_skill_target_selected")
+			_target_callback_args = [actor, skill]
 			_cancel_target_callback = Callable(self, "_restore_command_prompt")
 			_show_target_options(targets, tr("Select an enemy target."))
 		"ally_single":
@@ -540,7 +612,8 @@ func _prompt_for_skill(actor: BattleEntity, skill: Dictionary) -> void:
 			if allies.size() == 1:
 				_register_skill_command(actor, skill, [allies[0]])
 				return
-			_target_callback = Callable(self, "_on_skill_target_selected").bind(actor, skill)
+			_target_callback = Callable(self, "_on_skill_target_selected")
+			_target_callback_args = [actor, skill]
 			_cancel_target_callback = Callable(self, "_restore_command_prompt")
 			_show_target_options(allies, tr("Select an ally target."))
 		"enemy_all":
@@ -610,7 +683,8 @@ func _on_item_option_selected(slot_index: int, item_data: Dictionary) -> void:
 			if targets.is_empty():
 				_append_log(tr("No allies can receive the item."))
 				return
-			_target_callback = Callable(self, "_on_item_target_selected").bind(slot_index, item_data)
+			_target_callback = Callable(self, "_on_item_target_selected")
+			_target_callback_args = [slot_index, item_data]
 			_cancel_target_callback = Callable(self, "_restore_command_prompt")
 			_show_target_options(targets, tr("Select an ally for %s.") % _localize_item_name(item_data))
 		"escape":
@@ -712,7 +786,7 @@ func _build_enemy_commands() -> Dictionary:
 
 func _choose_enemy_skill(enemy: BattleEntity) -> Dictionary:
 	for skill_id in enemy.skills:
-		var skill: Dictionary = Data.get_skill_by_id(skill_id)
+		var skill: Dictionary = _get_skill_or_default(skill_id)
 		if skill.is_empty():
 			continue
 		var cost: int = int(skill.get("cost_mp", 0))
@@ -892,6 +966,8 @@ func _finalize_battle() -> void:
 	_enter_phase(Phase.COMPLETE)
 
 func _apply_party_results(snapshot: Array[Dictionary]) -> void:
+	if _using_fallback_party:
+		return
 	for entry in snapshot:
 		var index: int = int(entry.get("index", -1))
 		if index < 0:
@@ -915,6 +991,25 @@ func _localize_skill_name(skill: Dictionary) -> String:
 	elif name_data is String:
 		return name_data
 	return str(skill.get("id", "Skill"))
+
+func _get_skill_or_default(skill_id: String) -> Dictionary:
+	if skill_id == "":
+		return Dictionary()
+	var skill: Dictionary = Data.get_skill_by_id(skill_id)
+	if skill.is_empty() and skill_id == ATTACK_SKILL_ID:
+		return {
+			"id": ATTACK_SKILL_ID,
+			"name": {
+				"en": "Attack",
+				"ja": "こうげき",
+			},
+			"type": "skill",
+			"element": "physical",
+			"power": 1.0,
+			"cost_mp": 0,
+			"target": "enemy_single",
+		}
+	return skill
 
 func _localize_item_name(item: Dictionary) -> String:
 	var name_data: Variant = item.get("name")
