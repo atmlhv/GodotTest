@@ -473,16 +473,10 @@ func _on_target_button_pressed(button: Button) -> void:
 			pass
 
 func _handle_skill_target_payload(payload: Dictionary) -> void:
-	var target_variant: Variant = payload.get("target")
-	if target_variant == null:
-		return
-	var target := target_variant as BattleEntity
+	var target: BattleEntity = _resolve_payload_entity(payload, "target")
 	if target == null or not target.is_alive():
 		return
-	var actor_variant: Variant = payload.get("actor")
-	if actor_variant == null:
-		return
-	var actor := actor_variant as BattleEntity
+	var actor: BattleEntity = _resolve_payload_entity(payload, "actor")
 	if actor == null or not actor.is_alive():
 		return
 	var skill_variant: Variant = payload.get("skill")
@@ -492,16 +486,10 @@ func _handle_skill_target_payload(payload: Dictionary) -> void:
 	_on_skill_target_selected(target, actor, skill_dict)
 
 func _handle_item_target_payload(payload: Dictionary) -> void:
-	var target_variant: Variant = payload.get("target")
-	if target_variant == null:
-		return
-	var target := target_variant as BattleEntity
+	var target: BattleEntity = _resolve_payload_entity(payload, "target")
 	if target == null:
 		return
-	var actor_variant: Variant = payload.get("actor")
-	if actor_variant == null:
-		return
-	var actor := actor_variant as BattleEntity
+	var actor: BattleEntity = _resolve_payload_entity(payload, "actor")
 	if actor == null or not actor.is_alive():
 		return
 	var slot_index: int = int(payload.get("slot_index", -1))
@@ -510,6 +498,79 @@ func _handle_item_target_payload(payload: Dictionary) -> void:
 	if typeof(item_variant) == TYPE_DICTIONARY:
 		item_dict = item_variant
 	_on_item_target_selected(target, actor, slot_index, item_dict)
+
+func _resolve_payload_entity(payload: Dictionary, key: String) -> BattleEntity:
+	if payload.is_empty():
+		return null
+	if payload.has(key):
+		var value: Variant = payload.get(key)
+		if value is BattleEntity:
+			return value
+		if value is WeakRef:
+			var weak: WeakRef = value
+			var referenced: Object = weak.get_ref()
+			if referenced is BattleEntity:
+				return referenced
+			if referenced is RefCounted:
+				var candidate_from_ref: BattleEntity = referenced as BattleEntity
+				if candidate_from_ref != null:
+					return candidate_from_ref
+		if value is RefCounted:
+			var ref_candidate: BattleEntity = value as BattleEntity
+			if ref_candidate != null:
+				return ref_candidate
+	var uid_key: String = "%s_uid" % key
+	var uid: int = int(payload.get(uid_key, 0))
+	if uid != 0:
+		var resolved: BattleEntity = _resolve_entity_by_uid(uid)
+		if resolved != null:
+			return resolved
+	var instance_key: String = "%s_instance_id" % key
+	var instance_id: int = int(payload.get(instance_key, 0))
+	if instance_id != 0:
+		return _resolve_entity_by_instance_id(instance_id)
+	return null
+
+func _build_skill_target_payload(actor: BattleEntity, target: BattleEntity, skill: Dictionary) -> Dictionary:
+	return {
+		"mode": "skill",
+		"target": target,
+		"target_uid": target.uid,
+		"target_instance_id": target.get_instance_id(),
+		"actor": actor,
+		"actor_uid": actor.uid,
+		"actor_instance_id": actor.get_instance_id(),
+		"skill": skill.duplicate(true),
+	}
+
+func _build_item_target_payload(actor: BattleEntity, target: BattleEntity, slot_index: int, item_data: Dictionary) -> Dictionary:
+	return {
+		"mode": "item",
+		"target": target,
+		"target_uid": target.uid,
+		"target_instance_id": target.get_instance_id(),
+		"actor": actor,
+		"actor_uid": actor.uid,
+		"actor_instance_id": actor.get_instance_id(),
+		"slot_index": slot_index,
+		"item_data": item_data.duplicate(true),
+	}
+
+func _resolve_entity_by_uid(uid: int) -> BattleEntity:
+	if uid == 0 or _battle == null:
+		return null
+	return _battle.get_entity_by_uid(uid)
+
+func _resolve_entity_by_instance_id(instance_id: int) -> BattleEntity:
+	if instance_id == 0 or _battle == null:
+		return null
+	for ally in _battle.get_all_allies():
+		if ally != null and ally.get_instance_id() == instance_id:
+			return ally
+	for enemy in _battle.get_all_enemies():
+		if enemy != null and enemy.get_instance_id() == instance_id:
+			return enemy
+	return null
 
 func _cancel_target_selection() -> void:
 	_clear_targets()
@@ -656,12 +717,7 @@ func _prompt_for_skill(actor: BattleEntity, skill: Dictionary) -> void:
 					"disabled": disabled,
 				}
 				if not disabled:
-					button_entry["payload"] = {
-						"mode": "skill",
-						"target": target,
-						"actor": actor,
-						"skill": resolved_skill.duplicate(true),
-					}
+					button_entry["payload"] = _build_skill_target_payload(actor, target, resolved_skill)
 				buttons.append(button_entry)
 			_cancel_target_callback = Callable(self, "_restore_command_prompt")
 			_show_target_options(buttons, tr("Select an enemy target."))
@@ -678,12 +734,7 @@ func _prompt_for_skill(actor: BattleEntity, skill: Dictionary) -> void:
 					"disabled": disabled,
 				}
 				if not disabled:
-					ally_entry["payload"] = {
-						"mode": "skill",
-						"target": ally,
-						"actor": actor,
-						"skill": resolved_skill.duplicate(true),
-					}
+					ally_entry["payload"] = _build_skill_target_payload(actor, ally, resolved_skill)
 				ally_buttons.append(ally_entry)
 			_cancel_target_callback = Callable(self, "_restore_command_prompt")
 			_show_target_options(ally_buttons, tr("Select an ally target."))
@@ -763,13 +814,7 @@ func _on_item_option_selected(slot_index: int, item_data: Dictionary) -> void:
 					"disabled": disabled,
 				}
 				if not disabled:
-					entry["payload"] = {
-						"mode": "item",
-						"target": target,
-						"actor": actor_ref,
-						"slot_index": slot_index,
-						"item_data": item_data.duplicate(true),
-					}
+					entry["payload"] = _build_item_target_payload(actor_ref, target, slot_index, item_data)
 				item_buttons.append(entry)
 			_cancel_target_callback = Callable(self, "_restore_command_prompt")
 			_show_target_options(item_buttons, tr("Select an ally for %s.") % _localize_item_name(item_data))
@@ -1157,11 +1202,19 @@ class BattleController:
 	var allies: Array[BattleEntity] = []
 	var enemies: Array[BattleEntity] = []
 	var max_frontline: int
+	var _entity_lookup: Dictionary = {}
 
 	func _init(party_payload: Array[Dictionary], enemy_payload: Array[Dictionary], frontline_size: int) -> void:
 		max_frontline = frontline_size
+		_entity_lookup.clear()
+		BattleEntity.reset_uid_counter()
 		_build_allies(party_payload)
 		_build_enemies(enemy_payload)
+
+	func _register_entity(entity: BattleEntity) -> void:
+		if entity == null:
+			return
+		_entity_lookup[entity.uid] = entity
 
 	func _build_allies(party_payload: Array[Dictionary]) -> void:
 		for i in range(party_payload.size()):
@@ -1169,6 +1222,7 @@ class BattleController:
 			var frontline: bool = i < max_frontline
 			var entity := BattleEntity.new(member, false, i, frontline)
 			allies.append(entity)
+			_register_entity(entity)
 
 	func _build_enemies(enemy_payload: Array[Dictionary]) -> void:
 		var capped_payload: Array[Dictionary] = []
@@ -1191,12 +1245,27 @@ class BattleController:
 		for definition in capped_payload:
 			var entity := BattleEntity.new(definition, true, -1, true)
 			enemies.append(entity)
+			_register_entity(entity)
 
 	func get_all_allies() -> Array[BattleEntity]:
 		return allies
 
 	func get_all_enemies() -> Array[BattleEntity]:
 		return enemies
+
+	func get_entity_by_uid(uid: int) -> BattleEntity:
+		var entity: BattleEntity = _entity_lookup.get(uid, null)
+		if entity != null:
+			return entity
+		for ally in allies:
+			if ally != null and ally.uid == uid:
+				_register_entity(ally)
+				return ally
+		for enemy in enemies:
+			if enemy != null and enemy.uid == uid:
+				_register_entity(enemy)
+				return enemy
+		return null
 
 	func get_frontline_allies() -> Array[BattleEntity]:
 		var result: Array[BattleEntity] = []
@@ -1316,10 +1385,12 @@ class BattleController:
 		return true
 
 class BattleEntity:
+	static var _next_uid: int = 1
 	var index: int
 	var name: String
 	var is_enemy: bool
 	var frontline: bool
+	var uid: int = 0
 	var hp: int
 	var max_hp: int
 	var mp: int
@@ -1330,10 +1401,19 @@ class BattleEntity:
 	var guard_active: bool = false
 	var initiative: int = 0
 
+	static func reset_uid_counter() -> void:
+		_next_uid = 1
+
+	static func _allocate_uid() -> int:
+		var value: int = _next_uid
+		_next_uid += 1
+		return value
+
 	func _init(payload: Dictionary, enemy: bool, party_index: int, frontline_member: bool) -> void:
 		index = party_index
 		is_enemy = enemy
 		frontline = frontline_member
+		uid = _allocate_uid()
 		name = str(payload.get("name", payload.get("id", "Unknown")))
 		max_hp = int(payload.get("max_hp", payload.get("hp", 1)))
 		hp = clampi(int(payload.get("hp", max_hp)), 0, max_hp)
