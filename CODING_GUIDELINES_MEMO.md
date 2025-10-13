@@ -8,6 +8,7 @@
 - **三項演算子の代わりに `if ... else` 構文を使う**
   - Godot 4 の GDScript では `condition ? a : b` 形式はサポートされません。
   - 代わりに `a if condition else b` を使用しないと `Parse Error: Unexpected "?" in source` が発生します。
+  - 例: `scenes/Combat.gd` の AI ターゲット選択処理で `?` を使うと今回のエラーが再発しました。
 - **`sort_custom` には `Callable` を渡す**
   - Godot 4 の `Array.sort_custom` は 1 つの `Callable` 引数のみを受け取ります。
   - `sort_custom(self, "method")` のように 2 引数で呼び出すと `Too many arguments for "sort_custom()" call` エラーになります。

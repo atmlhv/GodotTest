@@ -180,34 +180,34 @@ func replace_inventory_item(slot_index: int, item_id: String, quantity: int = 1)
 	return true
 
 func remove_inventory_slot(slot_index: int) -> void:
-        if slot_index < 0 or slot_index >= _inventory_items.size():
-                return
-        _inventory_items.remove_at(slot_index)
-        inventory_updated.emit(get_inventory())
-        Save.autosave_debounced()
+	if slot_index < 0 or slot_index >= _inventory_items.size():
+		return
+	_inventory_items.remove_at(slot_index)
+	inventory_updated.emit(get_inventory())
+	Save.autosave_debounced()
 
 func consume_inventory_item(slot_index: int, quantity: int = 1) -> bool:
-        if slot_index < 0 or slot_index >= _inventory_items.size():
-                return false
-        if quantity <= 0:
-                return true
-        var entry: Dictionary = _inventory_items[slot_index]
-        var current_quantity: int = int(entry.get("quantity", 1))
-        if current_quantity <= 0:
-                return false
-        current_quantity -= quantity
-        if current_quantity <= 0:
-                _inventory_items.remove_at(slot_index)
-        else:
-                entry["quantity"] = current_quantity
-                _inventory_items[slot_index] = entry
-        inventory_updated.emit(get_inventory())
-        Save.autosave_debounced()
-        return true
+	if slot_index < 0 or slot_index >= _inventory_items.size():
+		return false
+	if quantity <= 0:
+		return true
+	var entry: Dictionary = _inventory_items[slot_index]
+	var current_quantity: int = int(entry.get("quantity", 1))
+	if current_quantity <= 0:
+		return false
+	current_quantity -= quantity
+	if current_quantity <= 0:
+		_inventory_items.remove_at(slot_index)
+	else:
+		entry["quantity"] = current_quantity
+		_inventory_items[slot_index] = entry
+	inventory_updated.emit(get_inventory())
+	Save.autosave_debounced()
+	return true
 
 func set_ascension_level(level: int) -> void:
-        if level == _ascension_level:
-                return
+	if level == _ascension_level:
+		return
 	_ascension_level = level
 	ascension_updated.emit(level)
 	Save.autosave_debounced()
