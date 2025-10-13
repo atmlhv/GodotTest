@@ -534,16 +534,24 @@ func _resolve_payload_entity(payload: Dictionary, key: String) -> BattleEntity:
 func _build_skill_target_payload(actor: BattleEntity, target: BattleEntity, skill: Dictionary) -> Dictionary:
 	return {
 		"mode": "skill",
+		"target": target,
 		"target_uid": target.uid,
+		"target_instance_id": target.get_instance_id(),
+		"actor": actor,
 		"actor_uid": actor.uid,
+		"actor_instance_id": actor.get_instance_id(),
 		"skill": skill.duplicate(true),
 	}
 
 func _build_item_target_payload(actor: BattleEntity, target: BattleEntity, slot_index: int, item_data: Dictionary) -> Dictionary:
 	return {
 		"mode": "item",
+		"target": target,
 		"target_uid": target.uid,
+		"target_instance_id": target.get_instance_id(),
+		"actor": actor,
 		"actor_uid": actor.uid,
+		"actor_instance_id": actor.get_instance_id(),
 		"slot_index": slot_index,
 		"item_data": item_data.duplicate(true),
 	}
@@ -1246,7 +1254,18 @@ class BattleController:
 		return enemies
 
 	func get_entity_by_uid(uid: int) -> BattleEntity:
-		return _entity_lookup.get(uid, null)
+		var entity: BattleEntity = _entity_lookup.get(uid, null)
+		if entity != null:
+			return entity
+		for ally in allies:
+			if ally != null and ally.uid == uid:
+				_register_entity(ally)
+				return ally
+		for enemy in enemies:
+			if enemy != null and enemy.uid == uid:
+				_register_entity(enemy)
+				return enemy
+		return null
 
 	func get_frontline_allies() -> Array[BattleEntity]:
 		var result: Array[BattleEntity] = []

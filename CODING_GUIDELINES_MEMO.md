@@ -31,6 +31,7 @@
   - ターゲットボタンを生成する際は `mode` と `target_uid` / `actor_uid` を含む辞書を `button.set_meta("target_payload", payload)` で保持し、`_on_target_button_pressed()` から種別ごとの処理関数を呼び出してください。必要に応じて `target` の直接参照も添えて構いません。
   - メタデータに必要な UID と補助情報を残しておけば UI の再描画や `_clear_targets()` 実行後でも選択内容が失われず、攻撃・アイテムともにターゲット決定が確実に機能します。
   - `BattleEntity` インスタンスをメタデータから取得した際に `payload.get("target") is BattleEntity` の判定が `false` になる事例があるため、UID での復元を必須とし、補助として直接参照を扱う場合も `_resolve_payload_entity()` で `is_alive()` を確認してから処理を進めてください。
+  - `BattleController` の `_entity_lookup` 辞書が `BattleEntity` 参照を保持していないケースがあり、`target_uid` だけでは復元できずターゲットボタンが無反応になる不具合が発生しました。UID の他に `actor` / `target` の直接参照と `get_instance_id()` をペイロードへ保存し、`get_entity_by_uid()` 側でも未登録エンティティを再登録するフォールバックを実装してください。
 - **シグナル接続で引数を束縛するときは `Callable` を明示する**
   - `button.pressed.connect(_on_pressed.bind(arg))` のようにメソッド参照を直接 `bind` するとコネクションが無効になり、ボタンを押しても何も起きませんでした。
   - 必ず `button.pressed.connect(Callable(self, "_on_pressed").bind(arg))` の形式で `Callable` を生成してから `bind` を使用してください。
