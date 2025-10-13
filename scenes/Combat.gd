@@ -729,16 +729,16 @@ func _enemy_targets_for_skill(enemy: BattleEntity, skill: Dictionary) -> Array[B
     match target_mode:
         "ally_single":
             var pool: Array[BattleEntity] = _battle.get_live_enemies() if not enemy.is_enemy else _battle.get_live_allies()
-            return pool.is_empty() ? [] : [pool[0]]
+            return [] if pool.is_empty() else [pool[0]]
         "enemy_all":
-            return enemy.is_enemy ? _battle.get_live_allies() : _battle.get_live_enemies()
+            return _battle.get_live_allies() if enemy.is_enemy else _battle.get_live_enemies()
         "ally_all":
-            return enemy.is_enemy ? _battle.get_live_enemies() : _battle.get_live_allies()
+            return _battle.get_live_enemies() if enemy.is_enemy else _battle.get_live_allies()
         _:
-            var opponents: Array[BattleEntity] = enemy.is_enemy ? _battle.get_live_allies() : _battle.get_live_enemies()
+            var opponents: Array[BattleEntity] = _battle.get_live_allies() if enemy.is_enemy else _battle.get_live_enemies()
             if opponents.is_empty():
                 return []
-            var frontline: Array[BattleEntity] = enemy.is_enemy ? _battle.get_live_frontline_allies() : opponents
+            var frontline: Array[BattleEntity] = _battle.get_live_frontline_allies() if enemy.is_enemy else opponents
             if enemy.is_enemy and not frontline.is_empty():
                 opponents = frontline
             var choice: BattleEntity = RNG.choice(RNG_STREAM_AI, opponents)
@@ -813,12 +813,12 @@ func _execute_item(command: BattleCommand) -> void:
     match command.item_effect:
         "heal_hp":
             var amount: int = int(item_data.get("value", 0))
-            var target: BattleEntity = command.targets.is_empty() ? actor : command.targets[0]
+            var target: BattleEntity = actor if command.targets.is_empty() else command.targets[0]
             var healed: int = target.heal_hp(amount)
             _append_log(tr("%s uses %s on %s, restoring %d HP.") % [actor.name, name, target.name, healed])
         "heal_mp":
             var amount_mp: int = int(item_data.get("value", 0))
-            var target_mp: BattleEntity = command.targets.is_empty() ? actor : command.targets[0]
+            var target_mp: BattleEntity = actor if command.targets.is_empty() else command.targets[0]
             var restored: int = target_mp.restore_mp(amount_mp)
             _append_log(tr("%s uses %s on %s, restoring %d MP.") % [actor.name, name, target_mp.name, restored])
         "escape":
