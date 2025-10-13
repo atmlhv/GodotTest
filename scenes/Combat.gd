@@ -435,8 +435,7 @@ func _show_target_options(targets: Array[BattleEntity], label: String, cancelabl
 		button.text = "%s (%d/%d HP)" % [target.name, target.hp, target.max_hp]
 		button.disabled = not target.is_alive()
 		button.focus_mode = Control.FOCUS_NONE
-		button.set_meta("entity", target)
-		button.pressed.connect(_on_target_button_pressed.bind(button))
+		button.pressed.connect(_on_target_button_pressed.bind(target))
 		target_list.add_child(button)
 	if cancelable:
 		var cancel_button := Button.new()
@@ -445,14 +444,11 @@ func _show_target_options(targets: Array[BattleEntity], label: String, cancelabl
 		cancel_button.pressed.connect(_cancel_target_selection)
 		target_list.add_child(cancel_button)
 
-func _on_target_button_pressed(button: Button) -> void:
-	if button == null:
-		return
-	var entity: Variant = button.get_meta("entity")
-	if not (entity is BattleEntity):
+func _on_target_button_pressed(target: BattleEntity) -> void:
+	if target == null:
 		return
 	if _target_callback.is_valid():
-		_target_callback.call(entity)
+		_target_callback.call(target)
 
 func _cancel_target_selection() -> void:
 	_clear_targets()
