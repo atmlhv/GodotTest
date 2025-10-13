@@ -430,25 +430,36 @@ func _show_target_options(targets: Array[BattleEntity], label: String, cancelabl
 	target_scroll.visible = true
 	if phase_label != null:
 		phase_label.text = label
-        for target in targets:
-                var button := Button.new()
-                button.text = "%s (%d/%d HP)" % [target.name, target.hp, target.max_hp]
-                button.disabled = not target.is_alive()
-                button.focus_mode = Control.FOCUS_NONE
-                button.pressed.connect(Callable(self, "_on_target_button_pressed").bind(target))
-                target_list.add_child(button)
-        if cancelable:
-                var cancel_button := Button.new()
-                cancel_button.text = tr("Cancel")
-                cancel_button.focus_mode = Control.FOCUS_NONE
-                cancel_button.pressed.connect(Callable(self, "_cancel_target_selection"))
-                target_list.add_child(cancel_button)
+	var selection_callback: Callable = _target_callback
+	var allow_selection: bool = selection_callback.is_valid()
+	for target in targets:
+		var button := Button.new()
+		button.text = "%s (%d/%d HP)" % [target.name, target.hp, target.max_hp]
+		button.disabled = not target.is_alive() or not allow_selection
+		button.focus_mode = Control.FOCUS_NONE
+		if allow_selection:
+			button.pressed.connect(Callable(self, "_invoke_target_selection").bind(selection_callback, target))
+		target_list.add_child(button)
+	if cancelable:
+		var cancel_button := Button.new()
+		cancel_button.text = tr("Cancel")
+		cancel_button.focus_mode = Control.FOCUS_NONE
+		if _cancel_target_callback.is_valid():
+			cancel_button.pressed.connect(Callable(self, "_invoke_cancel_callback").bind(_cancel_target_callback))
+		else:
+			cancel_button.pressed.connect(Callable(self, "_cancel_target_selection"))
+		target_list.add_child(cancel_button)
 
-func _on_target_button_pressed(target: BattleEntity) -> void:
+func _invoke_target_selection(callback: Callable, target: BattleEntity) -> void:
 	if target == null:
 		return
-	if _target_callback.is_valid():
-		_target_callback.call(target)
+	if callback.is_valid():
+		callback.call(target)
+
+func _invoke_cancel_callback(callback: Callable) -> void:
+	_clear_targets()
+	if callback.is_valid():
+		callback.call()
 
 func _cancel_target_selection() -> void:
 	_clear_targets()
