@@ -2,9 +2,11 @@
 
 最近発生したエラーを元にしたコーディング規約メモです。作業前に確認し、同様の不具合を防いでください。
 
-- **インデントは既存ファイルのスタイルに合わせる**
+- **インデントは既存ファイルのスタイルに合わせる（GDScript はタブ専用）**
   - GDScript ファイルではタブとスペースが混在すると `Parse Error: Used space character for indentation instead of tab` が発生します。
   - 既存コードがタブでインデントされている場合は必ずタブを使用し、スペースと混在させないでください。
+  - 例: `scenes/Combat.gd` の `_initialize_battle()` 内でスペースを混ぜた結果、`Mixed use of tabs and spaces for indentation.` が出力されました。
+  - 例: 同じく `scenes/Combat.gd` の `_show_target_options()` で `if target_scroll == null or target_list == null:` 以下の行をスペースだけでインデントすると、`Error at (420, 103): Mixed use of tabs and spaces for indentation.` が発生しました。ブロック全体をタブのみで揃えてください。
 - **三項演算子の代わりに `if ... else` 構文を使う**
   - Godot 4 の GDScript では `condition ? a : b` 形式はサポートされません。
   - 代わりに `a if condition else b` を使用しないと `Parse Error: Unexpected "?" in source` が発生します。
@@ -20,10 +22,9 @@
   - `Data.get_skill_by_id()` などのデータ取得系関数は、JSON のロードが完了する前に呼び出すと空の辞書を返します。
   - その状態で攻撃コマンドを生成すると「有効なスキルがない」と判定され、行動を選択できなくなります。
   - バトル開始前に `Data.data_loaded` を待つか、フォールバックデータを用意して例外を回避してください。
-- **ターゲット選択 UI を初期化するときはコールバックを消さない**
-  - `_clear_targets()` が `_target_callback` をリセットするため、ターゲット一覧表示前に呼び出すとボタンを押しても処理されなくなります。
-  - `_show_target_options()` でターゲット一覧を更新する際は、ボタンのクリア処理だけを行い、コールバックは表示後に設定するかリセットしないようにしてください。
-  - 生成したボタンはその時点の `Callable` を `connect` に直接渡し、後から `_target_callback` がクリアされても押下時に有効な処理が呼べるようにしてください。グローバル変数だけに依存すると、押しても反応しない不具合になります。
+- **ターゲット選択 UI のボタンには実行用コールバックを直接接続する**
+  - `_clear_targets()` のタイミングで `_target_callback` をクリアしてしまう実装だと、攻撃対象の一覧を開いた直後にコールバックが無効化され、ボタンを押してもコマンドが確定しない不具合が発生しました。
+  - ターゲット一覧を構築する際は `Callable(self, "_on_skill_target_selected").bind(...)` のように、その場で引数付きの `Callable` を生成して `button.pressed.connect` に渡してください。グローバル変数に格納したコールバックへ委譲すると再描画時に失われます。
   - `Callable` を別の `Callable` の引数としてバインドすると `is_valid()` が `false` になり、ターゲットボタンが常に無効化されました。メソッド本体の `Callable` と引数配列を別々に保持し、シグナル側ではローカルターゲットのみをバインドするようにしてください。
 - **シグナル接続で引数を束縛するときは `Callable` を明示する**
   - `button.pressed.connect(_on_pressed.bind(arg))` のようにメソッド参照を直接 `bind` するとコネクションが無効になり、ボタンを押しても何も起きませんでした。
