@@ -702,15 +702,15 @@ func _prompt_for_skill(actor: BattleEntity, skill: Dictionary) -> void:
 				_register_skill_command(actor, resolved_skill, [targets[0]])
 				return
 			var buttons: Array[Dictionary] = []
-                        for target in targets:
-                                var disabled: bool = not target.is_alive()
-                                var button_entry: Dictionary = {
-                                        "text": "%s (%d/%d HP)" % [target.name, target.hp, target.max_hp],
-                                        "disabled": disabled,
-                                }
-                                if not disabled:
-                                        button_entry["payload"] = _build_skill_target_payload(actor, target, resolved_skill)
-                                buttons.append(button_entry)
+			for target in targets:
+				var disabled: bool = not target.is_alive()
+				var button_entry: Dictionary = {
+					"text": "%s (%d/%d HP)" % [target.name, target.hp, target.max_hp],
+					"disabled": disabled,
+				}
+				if not disabled:
+					button_entry["payload"] = _build_skill_target_payload(actor, target, resolved_skill)
+				buttons.append(button_entry)
 			_cancel_target_callback = Callable(self, "_restore_command_prompt")
 			_show_target_options(buttons, tr("Select an enemy target."))
 		"ally_single":
@@ -719,15 +719,15 @@ func _prompt_for_skill(actor: BattleEntity, skill: Dictionary) -> void:
 				_register_skill_command(actor, resolved_skill, [allies[0]])
 				return
 			var ally_buttons: Array[Dictionary] = []
-                        for ally in allies:
-                                var disabled: bool = not ally.is_alive()
-                                var ally_entry: Dictionary = {
-                                        "text": "%s (%d/%d HP)" % [ally.name, ally.hp, ally.max_hp],
-                                        "disabled": disabled,
-                                }
-                                if not disabled:
-                                        ally_entry["payload"] = _build_skill_target_payload(actor, ally, resolved_skill)
-                                ally_buttons.append(ally_entry)
+			for ally in allies:
+				var disabled: bool = not ally.is_alive()
+				var ally_entry: Dictionary = {
+					"text": "%s (%d/%d HP)" % [ally.name, ally.hp, ally.max_hp],
+					"disabled": disabled,
+				}
+				if not disabled:
+					ally_entry["payload"] = _build_skill_target_payload(actor, ally, resolved_skill)
+				ally_buttons.append(ally_entry)
 			_cancel_target_callback = Callable(self, "_restore_command_prompt")
 			_show_target_options(ally_buttons, tr("Select an ally target."))
 		"enemy_all":
@@ -799,15 +799,15 @@ func _on_item_option_selected(slot_index: int, item_data: Dictionary) -> void:
 				_append_log(tr("No allies can receive the item."))
 				return
 			var item_buttons: Array[Dictionary] = []
-                        for target in targets:
-                                var disabled: bool = not target.is_alive()
-                                var entry: Dictionary = {
-                                        "text": "%s (%d/%d HP)" % [target.name, target.hp, target.max_hp],
-                                        "disabled": disabled,
-                                }
-                                if not disabled:
-                                        entry["payload"] = _build_item_target_payload(actor_ref, target, slot_index, item_data)
-                                item_buttons.append(entry)
+			for target in targets:
+				var disabled: bool = not target.is_alive()
+				var entry: Dictionary = {
+					"text": "%s (%d/%d HP)" % [target.name, target.hp, target.max_hp],
+					"disabled": disabled,
+				}
+				if not disabled:
+					entry["payload"] = _build_item_target_payload(actor_ref, target, slot_index, item_data)
+				item_buttons.append(entry)
 			_cancel_target_callback = Callable(self, "_restore_command_prompt")
 			_show_target_options(item_buttons, tr("Select an ally for %s.") % _localize_item_name(item_data))
 		"escape":

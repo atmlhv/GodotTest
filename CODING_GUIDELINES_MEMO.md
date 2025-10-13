@@ -32,6 +32,7 @@
   - `button.pressed.connect(_on_pressed.bind(arg))` のようにメソッド参照を直接 `bind` するとコネクションが無効になり、ボタンを押しても何も起きませんでした。
   - 必ず `button.pressed.connect(Callable(self, "_on_pressed").bind(arg))` の形式で `Callable` を生成してから `bind` を使用してください。
 - **スペースだけでインデントされた行を残さない**
+  - `scenes/Combat.gd` の `enemy_single` 対象選択ブロックでスペースインデントのまま保存した結果、`Error at (705, 1): Expected statement, found "Indent" instead.` が発生しました。タブへ置き換えて解消しました。
   - タブでインデントされているブロックにスペースだけのインデント行が混ざると `Parse Error: Expected statement, found "Indent" instead.` が発生しました。
   - 空行を追加する場合でもタブで揃えるか、余計な空白を削除して保存してください。
 
