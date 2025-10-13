@@ -26,6 +26,9 @@
   - `_clear_targets()` のタイミングで `_target_callback` をクリアしてしまう実装だと、攻撃対象の一覧を開いた直後にコールバックが無効化され、ボタンを押してもコマンドが確定しない不具合が発生しました。
   - ターゲット一覧を構築する際は `Callable(self, "_on_skill_target_selected").bind(...)` のように、その場で引数付きの `Callable` を生成して `button.pressed.connect` に渡してください。グローバル変数に格納したコールバックへ委譲すると再描画時に失われます。
   - `Callable` を別の `Callable` の引数としてバインドすると `is_valid()` が `false` になり、ターゲットボタンが常に無効化されました。メソッド本体の `Callable` と引数配列を別々に保持し、シグナル側ではローカルターゲットのみをバインドするようにしてください。
+- **ターゲットボタンの `Callable` はメタデータ経由で保持する**
+  - ターゲット候補の辞書に格納した `Callable` をそのまま `button.pressed.connect(callback)` したところ、押下時に何も起きず攻撃対象を選択できませんでした。
+  - ボタン生成時に `button.set_meta("target_callback", callable)` で保持し、シグナルは `Callable(self, "_on_target_button_pressed").bind(button)` のように共通ハンドラへ接続して `callable.call()` を実行してください。
 - **シグナル接続で引数を束縛するときは `Callable` を明示する**
   - `button.pressed.connect(_on_pressed.bind(arg))` のようにメソッド参照を直接 `bind` するとコネクションが無効になり、ボタンを押しても何も起きませんでした。
   - 必ず `button.pressed.connect(Callable(self, "_on_pressed").bind(arg))` の形式で `Callable` を生成してから `bind` を使用してください。

@@ -26,6 +26,7 @@ const OPTIONS_SCROLL_PATH: NodePath = NodePath("RootLayout/BodyMargin/Panel/VBox
 const OPTIONS_LIST_PATH: NodePath = NodePath("RootLayout/BodyMargin/Panel/VBox/CommandPanel/OptionsScroll/OptionsList")
 const TARGET_SCROLL_PATH: NodePath = NodePath("RootLayout/BodyMargin/Panel/VBox/CommandPanel/TargetScroll")
 const TARGET_LIST_PATH: NodePath = NodePath("RootLayout/BodyMargin/Panel/VBox/CommandPanel/TargetScroll/TargetList")
+const TARGET_CALLBACK_META: StringName = StringName("target_callback")
 const ATTACK_BUTTON_PATH: NodePath = NodePath("RootLayout/BodyMargin/Panel/VBox/CommandPanel/CommandButtons/AttackButton")
 const SKILL_BUTTON_PATH: NodePath = NodePath("RootLayout/BodyMargin/Panel/VBox/CommandPanel/CommandButtons/SkillButton")
 const SPELL_BUTTON_PATH: NodePath = NodePath("RootLayout/BodyMargin/Panel/VBox/CommandPanel/CommandButtons/SpellButton")
@@ -432,9 +433,12 @@ func _show_target_options(buttons: Array[Dictionary], label: String, cancelable:
 		button.text = str(button_data.get("text", "Target"))
 		button.disabled = bool(button_data.get("disabled", false))
 		button.focus_mode = Control.FOCUS_NONE
-		var callback: Variant = button_data.get("callback")
-		if callback is Callable and (callback as Callable).is_valid() and not button.disabled:
-			button.pressed.connect(callback)
+		var callback_variant: Variant = button_data.get("callback")
+		if callback_variant is Callable:
+			var callable: Callable = callback_variant
+			if callable.is_valid() and not button.disabled:
+				button.set_meta(TARGET_CALLBACK_META, callable)
+				button.pressed.connect(Callable(self, "_on_target_button_pressed").bind(button))
 		target_list.add_child(button)
 	if cancelable:
 		var cancel_button := Button.new()
@@ -442,6 +446,17 @@ func _show_target_options(buttons: Array[Dictionary], label: String, cancelable:
 		cancel_button.focus_mode = Control.FOCUS_NONE
 		cancel_button.pressed.connect(Callable(self, "_cancel_target_selection"))
 		target_list.add_child(cancel_button)
+
+func _on_target_button_pressed(button: Button) -> void:
+	if button == null:
+		return
+	var stored_callback: Variant = button.get_meta(TARGET_CALLBACK_META)
+	if not (stored_callback is Callable):
+		return
+	var callable: Callable = stored_callback
+	if not callable.is_valid():
+		return
+	callable.call()
 
 func _cancel_target_selection() -> void:
 	_clear_targets()
