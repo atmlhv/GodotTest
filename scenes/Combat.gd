@@ -56,6 +56,7 @@ var _pending_commands: Array[BattleCommand] = []
 var _current_actor_index: int = 0
 var _current_actor: BattleEntity
 var _target_callback: Callable = Callable()
+var _target_callback_args: Array = []
 var _cancel_target_callback: Callable = Callable()
 var _formation_selection: BattleEntity
 var _encounter_resolved: bool = false
@@ -145,6 +146,7 @@ func _initialize_battle() -> void:
 	_current_actor = null
 	_formation_selection = null
 	_target_callback = Callable()
+	_target_callback_args.clear()
 	_cancel_target_callback = Callable()
 	_battle_result = {}
 	_encounter_resolved = false
@@ -393,6 +395,7 @@ func _clear_targets() -> void:
 	if target_scroll != null:
 		target_scroll.visible = false
 	_target_callback = Callable()
+	_target_callback_args.clear()
 	_cancel_target_callback = Callable()
 
 func _clear_target_buttons() -> void:
@@ -430,15 +433,14 @@ func _show_target_options(targets: Array[BattleEntity], label: String, cancelabl
 	target_scroll.visible = true
 	if phase_label != null:
 		phase_label.text = label
-	var selection_callback: Callable = _target_callback
-	var allow_selection: bool = selection_callback.is_valid()
+	var allow_selection: bool = _target_callback.is_valid()
 	for target in targets:
 		var button := Button.new()
 		button.text = "%s (%d/%d HP)" % [target.name, target.hp, target.max_hp]
 		button.disabled = not target.is_alive() or not allow_selection
 		button.focus_mode = Control.FOCUS_NONE
-		if allow_selection:
-			button.pressed.connect(Callable(self, "_invoke_target_selection").bind(selection_callback, target))
+		if allow_selection and not button.disabled:
+			button.pressed.connect(Callable(self, "_on_target_button_pressed").bind(target))
 		target_list.add_child(button)
 	if cancelable:
 		var cancel_button := Button.new()
@@ -450,11 +452,15 @@ func _show_target_options(targets: Array[BattleEntity], label: String, cancelabl
 			cancel_button.pressed.connect(Callable(self, "_cancel_target_selection"))
 		target_list.add_child(cancel_button)
 
-func _invoke_target_selection(callback: Callable, target: BattleEntity) -> void:
+func _on_target_button_pressed(target: BattleEntity) -> void:
 	if target == null:
 		return
-	if callback.is_valid():
-		callback.call(target)
+	if not _target_callback.is_valid():
+		return
+	var args: Array = [target]
+	for extra in _target_callback_args:
+		args.append(extra)
+	_target_callback.callv(args)
 
 func _invoke_cancel_callback(callback: Callable) -> void:
 	_clear_targets()
@@ -597,7 +603,8 @@ func _prompt_for_skill(actor: BattleEntity, skill: Dictionary) -> void:
 			if targets.size() == 1:
 				_register_skill_command(actor, skill, [targets[0]])
 				return
-			_target_callback = Callable(self, "_on_skill_target_selected").bind(actor, skill)
+			_target_callback = Callable(self, "_on_skill_target_selected")
+			_target_callback_args = [actor, skill]
 			_cancel_target_callback = Callable(self, "_restore_command_prompt")
 			_show_target_options(targets, tr("Select an enemy target."))
 		"ally_single":
@@ -605,7 +612,8 @@ func _prompt_for_skill(actor: BattleEntity, skill: Dictionary) -> void:
 			if allies.size() == 1:
 				_register_skill_command(actor, skill, [allies[0]])
 				return
-			_target_callback = Callable(self, "_on_skill_target_selected").bind(actor, skill)
+			_target_callback = Callable(self, "_on_skill_target_selected")
+			_target_callback_args = [actor, skill]
 			_cancel_target_callback = Callable(self, "_restore_command_prompt")
 			_show_target_options(allies, tr("Select an ally target."))
 		"enemy_all":
@@ -675,7 +683,8 @@ func _on_item_option_selected(slot_index: int, item_data: Dictionary) -> void:
 			if targets.is_empty():
 				_append_log(tr("No allies can receive the item."))
 				return
-			_target_callback = Callable(self, "_on_item_target_selected").bind(slot_index, item_data)
+			_target_callback = Callable(self, "_on_item_target_selected")
+			_target_callback_args = [slot_index, item_data]
 			_cancel_target_callback = Callable(self, "_restore_command_prompt")
 			_show_target_options(targets, tr("Select an ally for %s.") % _localize_item_name(item_data))
 		"escape":

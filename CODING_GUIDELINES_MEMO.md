@@ -24,6 +24,7 @@
   - `_clear_targets()` が `_target_callback` をリセットするため、ターゲット一覧表示前に呼び出すとボタンを押しても処理されなくなります。
   - `_show_target_options()` でターゲット一覧を更新する際は、ボタンのクリア処理だけを行い、コールバックは表示後に設定するかリセットしないようにしてください。
   - 生成したボタンはその時点の `Callable` を `connect` に直接渡し、後から `_target_callback` がクリアされても押下時に有効な処理が呼べるようにしてください。グローバル変数だけに依存すると、押しても反応しない不具合になります。
+  - `Callable` を別の `Callable` の引数としてバインドすると `is_valid()` が `false` になり、ターゲットボタンが常に無効化されました。メソッド本体の `Callable` と引数配列を別々に保持し、シグナル側ではローカルターゲットのみをバインドするようにしてください。
 - **シグナル接続で引数を束縛するときは `Callable` を明示する**
   - `button.pressed.connect(_on_pressed.bind(arg))` のようにメソッド参照を直接 `bind` するとコネクションが無効になり、ボタンを押しても何も起きませんでした。
   - 必ず `button.pressed.connect(Callable(self, "_on_pressed").bind(arg))` の形式で `Callable` を生成してから `bind` を使用してください。
