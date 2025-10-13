@@ -32,7 +32,12 @@
   - `button.pressed.connect(_on_pressed.bind(arg))` のようにメソッド参照を直接 `bind` するとコネクションが無効になり、ボタンを押しても何も起きませんでした。
   - 必ず `button.pressed.connect(Callable(self, "_on_pressed").bind(arg))` の形式で `Callable` を生成してから `bind` を使用してください。
 - **スペースだけでインデントされた行を残さない**
+  - `scenes/Combat.gd` の `enemy_single` 対象選択ブロックでスペースインデントのまま保存した結果、`Error at (705, 1): Expected statement, found "Indent" instead.` が発生しました。タブへ置き換えて解消しました。
   - タブでインデントされているブロックにスペースだけのインデント行が混ざると `Parse Error: Expected statement, found "Indent" instead.` が発生しました。
   - 空行を追加する場合でもタブで揃えるか、余計な空白を削除して保存してください。
+- **Nullable な戻り値を `:=` で受けると `Variant` 型に推論される**
+  - Godot 4.5 では `var target := _resolve_payload_entity(...)` のように `:=` で受けると、`null` を返す可能性がある関数の場合 `Variant` 型として推論されます。
+  - `_handle_item_target_payload()` でこの書き方をすると `Error at (512, 9): The variable type is being inferred from a Variant value, so it will be typed as Variant.` が表示され、警告がエラー扱いになります。
+  - `var target: BattleEntity = ...` のように明示的な型注釈を追加し、参照が `null` かどうかをチェックしてから処理を続けてください。
 
 上記に違反するとスクリプトが読み込まれず、ゲーム起動時にエラーが表示されます。常に Godot の構文ルールと既存スタイルに従ってください。

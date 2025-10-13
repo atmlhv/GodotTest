@@ -473,16 +473,10 @@ func _on_target_button_pressed(button: Button) -> void:
 			pass
 
 func _handle_skill_target_payload(payload: Dictionary) -> void:
-	var target_variant: Variant = payload.get("target")
-	if target_variant == null:
-		return
-	var target := target_variant as BattleEntity
+	var target: BattleEntity = _resolve_payload_entity(payload, "target")
 	if target == null or not target.is_alive():
 		return
-	var actor_variant: Variant = payload.get("actor")
-	if actor_variant == null:
-		return
-	var actor := actor_variant as BattleEntity
+	var actor: BattleEntity = _resolve_payload_entity(payload, "actor")
 	if actor == null or not actor.is_alive():
 		return
 	var skill_variant: Variant = payload.get("skill")
@@ -492,16 +486,10 @@ func _handle_skill_target_payload(payload: Dictionary) -> void:
 	_on_skill_target_selected(target, actor, skill_dict)
 
 func _handle_item_target_payload(payload: Dictionary) -> void:
-	var target_variant: Variant = payload.get("target")
-	if target_variant == null:
-		return
-	var target := target_variant as BattleEntity
+	var target: BattleEntity = _resolve_payload_entity(payload, "target")
 	if target == null:
 		return
-	var actor_variant: Variant = payload.get("actor")
-	if actor_variant == null:
-		return
-	var actor := actor_variant as BattleEntity
+	var actor: BattleEntity = _resolve_payload_entity(payload, "actor")
 	if actor == null or not actor.is_alive():
 		return
 	var slot_index: int = int(payload.get("slot_index", -1))
@@ -510,6 +498,71 @@ func _handle_item_target_payload(payload: Dictionary) -> void:
 	if typeof(item_variant) == TYPE_DICTIONARY:
 		item_dict = item_variant
 	_on_item_target_selected(target, actor, slot_index, item_dict)
+
+func _resolve_payload_entity(payload: Dictionary, key: String) -> BattleEntity:
+	if payload.is_empty():
+		return null
+	var value: Variant = payload.get(key)
+	if value == null:
+		return null
+	if value is BattleEntity:
+		return value
+	if value is WeakRef:
+		var weak: WeakRef = value
+		var referenced: Object = weak.get_ref()
+		if referenced is BattleEntity:
+			return referenced
+		if referenced is Object:
+			var instance_object: Object = referenced
+			var candidate: BattleEntity = _resolve_entity_by_instance_id(instance_object.get_instance_id())
+			if candidate != null:
+				return candidate
+		return null
+	if value is RefCounted:
+		var refcounted: RefCounted = value
+		var candidate_from_ref: BattleEntity = _resolve_entity_by_instance_id(refcounted.get_instance_id())
+		if candidate_from_ref != null:
+			return candidate_from_ref
+	var instance_id: int = int(payload.get("%s_instance_id" % key, 0))
+	if instance_id != 0:
+		return _resolve_entity_by_instance_id(instance_id)
+	return null
+
+func _build_skill_target_payload(actor: BattleEntity, target: BattleEntity, skill: Dictionary) -> Dictionary:
+	var actor_ref := weakref(actor)
+	var target_ref := weakref(target)
+	return {
+		"mode": "skill",
+		"target": target_ref,
+		"target_instance_id": target.get_instance_id(),
+		"actor": actor_ref,
+		"actor_instance_id": actor.get_instance_id(),
+		"skill": skill.duplicate(true),
+	}
+
+func _build_item_target_payload(actor: BattleEntity, target: BattleEntity, slot_index: int, item_data: Dictionary) -> Dictionary:
+	var actor_ref := weakref(actor)
+	var target_ref := weakref(target)
+	return {
+		"mode": "item",
+		"target": target_ref,
+		"target_instance_id": target.get_instance_id(),
+		"actor": actor_ref,
+		"actor_instance_id": actor.get_instance_id(),
+		"slot_index": slot_index,
+		"item_data": item_data.duplicate(true),
+	}
+
+func _resolve_entity_by_instance_id(instance_id: int) -> BattleEntity:
+	if instance_id == 0 or _battle == null:
+		return null
+	for ally in _battle.get_all_allies():
+		if ally != null and ally.get_instance_id() == instance_id:
+			return ally
+	for enemy in _battle.get_all_enemies():
+		if enemy != null and enemy.get_instance_id() == instance_id:
+			return enemy
+	return null
 
 func _cancel_target_selection() -> void:
 	_clear_targets()
@@ -656,12 +709,7 @@ func _prompt_for_skill(actor: BattleEntity, skill: Dictionary) -> void:
 					"disabled": disabled,
 				}
 				if not disabled:
-					button_entry["payload"] = {
-						"mode": "skill",
-						"target": target,
-						"actor": actor,
-						"skill": resolved_skill.duplicate(true),
-					}
+					button_entry["payload"] = _build_skill_target_payload(actor, target, resolved_skill)
 				buttons.append(button_entry)
 			_cancel_target_callback = Callable(self, "_restore_command_prompt")
 			_show_target_options(buttons, tr("Select an enemy target."))
@@ -678,12 +726,7 @@ func _prompt_for_skill(actor: BattleEntity, skill: Dictionary) -> void:
 					"disabled": disabled,
 				}
 				if not disabled:
-					ally_entry["payload"] = {
-						"mode": "skill",
-						"target": ally,
-						"actor": actor,
-						"skill": resolved_skill.duplicate(true),
-					}
+					ally_entry["payload"] = _build_skill_target_payload(actor, ally, resolved_skill)
 				ally_buttons.append(ally_entry)
 			_cancel_target_callback = Callable(self, "_restore_command_prompt")
 			_show_target_options(ally_buttons, tr("Select an ally target."))
@@ -763,13 +806,7 @@ func _on_item_option_selected(slot_index: int, item_data: Dictionary) -> void:
 					"disabled": disabled,
 				}
 				if not disabled:
-					entry["payload"] = {
-						"mode": "item",
-						"target": target,
-						"actor": actor_ref,
-						"slot_index": slot_index,
-						"item_data": item_data.duplicate(true),
-					}
+					entry["payload"] = _build_item_target_payload(actor_ref, target, slot_index, item_data)
 				item_buttons.append(entry)
 			_cancel_target_callback = Callable(self, "_restore_command_prompt")
 			_show_target_options(item_buttons, tr("Select an ally for %s.") % _localize_item_name(item_data))
