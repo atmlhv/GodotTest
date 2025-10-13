@@ -340,8 +340,8 @@ func _populate_entity_list(container: VBoxContainer, entities: Array[BattleEntit
 		button.disabled = not entity.is_alive()
 		button.focus_mode = Control.FOCUS_NONE
 		button.set_meta("entity", entity)
-                if is_ally:
-                        button.pressed.connect(Callable(self, "_on_ally_entry_pressed").bind(button))
+		if is_ally:
+			button.pressed.connect(Callable(self, "_on_ally_entry_pressed").bind(button))
 		container.add_child(button)
 
 func _format_entity_text(entity: BattleEntity, is_ally: bool) -> String:

@@ -26,5 +26,8 @@
 - **シグナル接続で引数を束縛するときは `Callable` を明示する**
   - `button.pressed.connect(_on_pressed.bind(arg))` のようにメソッド参照を直接 `bind` するとコネクションが無効になり、ボタンを押しても何も起きませんでした。
   - 必ず `button.pressed.connect(Callable(self, "_on_pressed").bind(arg))` の形式で `Callable` を生成してから `bind` を使用してください。
+- **スペースだけでインデントされた行を残さない**
+  - タブでインデントされているブロックにスペースだけのインデント行が混ざると `Parse Error: Expected statement, found "Indent" instead.` が発生しました。
+  - 空行を追加する場合でもタブで揃えるか、余計な空白を削除して保存してください。
 
 上記に違反するとスクリプトが読み込まれず、ゲーム起動時にエラーが表示されます。常に Godot の構文ルールと既存スタイルに従ってください。
