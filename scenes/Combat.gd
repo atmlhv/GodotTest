@@ -389,14 +389,17 @@ func _clear_options() -> void:
 		options_scroll.visible = false
 
 func _clear_targets() -> void:
-	if target_list == null:
-		return
-	for child in target_list.get_children():
-		child.queue_free()
+	_clear_target_buttons()
 	if target_scroll != null:
 		target_scroll.visible = false
 	_target_callback = Callable()
 	_cancel_target_callback = Callable()
+
+func _clear_target_buttons() -> void:
+	if target_list == null:
+		return
+	for child in target_list.get_children():
+		child.queue_free()
 
 func _show_options(buttons: Array[Dictionary]) -> void:
 	_clear_options()
@@ -418,9 +421,9 @@ func _show_options(buttons: Array[Dictionary]) -> void:
 		options_list.add_child(option_button)
 
 func _show_target_options(targets: Array[BattleEntity], label: String, cancelable: bool = true) -> void:
-	_clear_targets()
 	if target_scroll == null or target_list == null:
 		return
+	_clear_target_buttons()
 	if targets.is_empty():
 		target_scroll.visible = false
 		return
